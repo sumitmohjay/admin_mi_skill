@@ -21,37 +21,54 @@ class CustomDrawer extends StatelessWidget {
             width: double.infinity,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
+                colors: [Color(0xFF9C27B0), Color(0xFF7B1FA2)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
             ),
-            child: const Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Stack(
               children: [
-                CircleAvatar(
-                  radius: 40,
-                  backgroundColor: Colors.white,
-                  child: Icon(
-                    Icons.admin_panel_settings,
-                    size: 40,
-                    color: Color(0xFF2196F3),
-                  ),
+                const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircleAvatar(
+                      radius: 40,
+                      backgroundColor: Colors.white,
+                      child: Icon(
+                        Icons.admin_panel_settings,
+                        size: 40,
+                        color: Color(0xFF9C27B0),
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Admin MI',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Management Interface',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 16),
-                Text(
-                  'Admin MI',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  'Management Interface',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
+                Positioned(
+                  top: 40,
+                  right: 16,
+                  child: IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                    tooltip: 'Close drawer',
                   ),
                 ),
               ],
@@ -59,7 +76,7 @@ class CustomDrawer extends StatelessWidget {
           ),
 
           // Navigation Items
-          Expanded(
+                   Expanded(
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
@@ -79,29 +96,29 @@ class CustomDrawer extends StatelessWidget {
                   onTap: () => onItemTapped(1),
                 ),
                 _buildDrawerItem(
-                  icon: Icons.analytics,
-                  title: 'Analytics',
+                  icon: Icons.school,
+                  title: 'Instructors Management',
                   index: 2,
                   isSelected: selectedIndex == 2,
                   onTap: () => onItemTapped(2),
                 ),
                 _buildDrawerItem(
-                  icon: Icons.inventory,
-                  title: 'Inventory',
+                  icon: Icons.analytics,
+                  title: 'Event Management',
                   index: 3,
                   isSelected: selectedIndex == 3,
                   onTap: () => onItemTapped(3),
                 ),
                 _buildDrawerItem(
-                  icon: Icons.shopping_cart,
-                  title: 'Orders',
+                  icon: Icons.inventory,
+                  title: 'Course',
                   index: 4,
                   isSelected: selectedIndex == 4,
                   onTap: () => onItemTapped(4),
                 ),
                 _buildDrawerItem(
-                  icon: Icons.payment,
-                  title: 'Payments',
+                  icon: Icons.shopping_cart,
+                  title: 'Group',
                   index: 5,
                   isSelected: selectedIndex == 5,
                   onTap: () => onItemTapped(5),
@@ -124,7 +141,6 @@ class CustomDrawer extends StatelessWidget {
               ],
             ),
           ),
-
           // Footer
           Container(
             padding: const EdgeInsets.all(16),
@@ -185,18 +201,18 @@ class CustomDrawer extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        color: isSelected ? const Color(0xFF2196F3).withOpacity(0.1) : null,
+        color: isSelected ? const Color(0xFF9C27B0).withOpacity(0.1) : null,
       ),
       child: ListTile(
         leading: Icon(
           icon,
-          color: isSelected ? const Color(0xFF2196F3) : Colors.grey[600],
+          color: isSelected ? const Color(0xFF9C27B0) : Colors.grey[600],
           size: 22,
         ),
         title: Text(
           title,
           style: TextStyle(
-            color: isSelected ? const Color(0xFF2196F3) : Colors.grey[800],
+            color: isSelected ? const Color(0xFF9C27B0) : Colors.grey[800],
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             fontSize: 14,
           ),
@@ -207,7 +223,7 @@ class CustomDrawer extends StatelessWidget {
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         selected: isSelected,
-        selectedTileColor: const Color(0xFF2196F3).withOpacity(0.1),
+        selectedTileColor: const Color(0xFF9C27B0).withOpacity(0.1),
       ),
     );
   }

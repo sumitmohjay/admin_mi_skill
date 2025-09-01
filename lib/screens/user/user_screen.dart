@@ -111,7 +111,7 @@ class _UserScreenState extends State<UserScreen> {
                 icon: const Icon(Icons.add),
                 label: const Text('Add User'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2196F3),
+                  backgroundColor: const Color(0xFF9C27B0),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   shape: RoundedRectangleBorder(
@@ -186,7 +186,7 @@ class _UserScreenState extends State<UserScreen> {
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _buildStatCard('Active', '${_users.where((u) => u['status'] == 'Active').length}', Icons.check_circle, const Color(0xFF2196F3)),
+                child: _buildStatCard('Active', '${_users.where((u) => u['status'] == 'Active').length}', Icons.check_circle, const Color(0xFF9C27B0)),
               ),
               const SizedBox(width: 16),
               Expanded(

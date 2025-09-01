@@ -17,14 +17,14 @@ class HomeScreen extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
+                colors: [Color(0xFF9C27B0), Color(0xFF7B1FA2)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.blue.withOpacity(0.3),
+                  color: Colors.purple.withOpacity(0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 4),
                 ),
@@ -150,12 +150,12 @@ class HomeScreen extends StatelessWidget {
                       FlSpot(6, 6),
                     ],
                     isCurved: true,
-                    color: const Color(0xFF2196F3),
+                    color: const Color(0xFF9C27B0),
                     barWidth: 3,
                     dotData: const FlDotData(show: false),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: const Color(0xFF2196F3).withOpacity(0.1),
+                      color: const Color(0xFF9C27B0).withOpacity(0.1),
                     ),
                   ),
                 ],

@@ -25,48 +25,6 @@ class CustomNavbar extends StatelessWidget implements PreferredSizeWidget {
         onPressed: onMenuPressed,
       ),
       actions: [
-        // Search Button
-        IconButton(
-          icon: const Icon(Icons.search),
-          onPressed: () => _showSearchDialog(context),
-          tooltip: 'Search',
-        ),
-        
-        // Notifications
-        Stack(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.notifications_outlined),
-              onPressed: () => _showNotifications(context),
-              tooltip: 'Notifications',
-            ),
-            Positioned(
-              right: 8,
-              top: 8,
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                constraints: const BoxConstraints(
-                  minWidth: 12,
-                  minHeight: 12,
-                ),
-                child: const Text(
-                  '3',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 8,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-          ],
-        ),
-
         // Profile Menu
         PopupMenuButton<String>(
           icon: const CircleAvatar(
@@ -74,7 +32,7 @@ class CustomNavbar extends StatelessWidget implements PreferredSizeWidget {
             backgroundColor: Colors.white,
             child: Icon(
               Icons.person,
-              color: Color(0xFF2196F3),
+              color: Color(0xFF9C27B0),
               size: 20,
             ),
           ),
@@ -116,12 +74,12 @@ class CustomNavbar extends StatelessWidget implements PreferredSizeWidget {
         const SizedBox(width: 8),
       ],
       elevation: 0,
-      backgroundColor: const Color(0xFF2196F3),
+      backgroundColor: const Color(0xFF9C27B0),
       foregroundColor: Colors.white,
       flexibleSpace: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
+            colors: [Color(0xFF9C27B0), Color(0xFF7B1FA2)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -130,126 +88,6 @@ class CustomNavbar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
-  void _showSearchDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Search'),
-        content: const TextField(
-          decoration: InputDecoration(
-            hintText: 'Enter search term...',
-            prefixIcon: Icon(Icons.search),
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Search'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showNotifications(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.notifications),
-            SizedBox(width: 8),
-            Text('Notifications'),
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          height: 300,
-          child: ListView(
-            children: [
-              _buildNotificationItem(
-                'New user registered',
-                'John Doe has joined the platform',
-                '2 minutes ago',
-                Icons.person_add,
-                Colors.green,
-              ),
-              const Divider(),
-              _buildNotificationItem(
-                'System update',
-                'System maintenance scheduled for tonight',
-                '1 hour ago',
-                Icons.system_update,
-                Colors.orange,
-              ),
-              const Divider(),
-              _buildNotificationItem(
-                'Payment received',
-                'Payment of \$299 has been processed',
-                '3 hours ago',
-                Icons.payment,
-                Colors.blue,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Mark all as read'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNotificationItem(
-    String title,
-    String subtitle,
-    String time,
-    IconData icon,
-    Color color,
-  ) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, color: color, size: 20),
-      ),
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(subtitle, style: const TextStyle(fontSize: 12)),
-          const SizedBox(height: 4),
-          Text(
-            time,
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[600],
-            ),
-          ),
-        ],
-      ),
-      contentPadding: EdgeInsets.zero,
-      dense: true,
-    );
-  }
 
   void _handleProfileAction(BuildContext context, String action) {
     switch (action) {

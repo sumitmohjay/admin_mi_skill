@@ -17,11 +17,11 @@ class MyApp extends StatelessWidget {
       title: 'Admin MI',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        primaryColor: const Color(0xFF2196F3),
-        scaffoldBackgroundColor: const Color(0xFFF5F5F5),
+        primarySwatch: Colors.purple,
+        primaryColor: const Color(0xFF9C27B0),
+        scaffoldBackgroundColor: const Color(0xFFF8F8F8),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF2196F3),
+          backgroundColor: Color(0xFF9C27B0),
           foregroundColor: Colors.white,
           elevation: 0,
         ),
