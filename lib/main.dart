@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/user/user_screen.dart';
+import 'screens/group/group_screen.dart';
 import 'widgets/custom_drawer.dart';
 import 'widgets/custom_navbar.dart';
 
@@ -49,11 +50,23 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const UserScreen(),
+    const GroupScreen(), // Instructors Management placeholder
+    const GroupScreen(), // Event Management placeholder  
+    const GroupScreen(), // Course placeholder
+    const GroupScreen(), // Group Management
+    const GroupScreen(), // Settings placeholder
+    const GroupScreen(), // Help & Support placeholder
   ];
 
   final List<String> _titles = [
     'Dashboard',
     'User Management',
+    'Instructors Management',
+    'Event Management',
+    'Course',
+    'Group',
+    'Settings',
+    'Help & Support',
   ];
 
   void _onItemTapped(int index) {
