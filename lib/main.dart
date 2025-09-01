@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/user/user_screen.dart';
+import 'screens/event_management/event_management_screen.dart';
 import 'widgets/custom_drawer.dart';
 import 'widgets/custom_navbar.dart';
 
@@ -49,11 +50,15 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const UserScreen(),
+    const EventManagementScreen(), // Placeholder for Instructors Management
+    const EventManagementScreen(),
   ];
 
   final List<String> _titles = [
     'Dashboard',
     'User Management',
+    'Instructors Management',
+    'Event Management',
   ];
 
   void _onItemTapped(int index) {
