@@ -24,55 +24,55 @@ class CustomNavbar extends StatelessWidget implements PreferredSizeWidget {
         icon: const Icon(Icons.menu),
         onPressed: onMenuPressed,
       ),
-      actions: [
-        // Profile Menu
-        PopupMenuButton<String>(
-          icon: const CircleAvatar(
-            radius: 16,
-            backgroundColor: Colors.white,
-            child: Icon(
-              Icons.person,
-              color: Color(0xFF9C27B0),
-              size: 20,
-            ),
-          ),
-          onSelected: (value) => _handleProfileAction(context, value),
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'profile',
-              child: Row(
-                children: [
-                  Icon(Icons.person, size: 18),
-                  SizedBox(width: 8),
-                  Text('Profile'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'settings',
-              child: Row(
-                children: [
-                  Icon(Icons.settings, size: 18),
-                  SizedBox(width: 8),
-                  Text('Settings'),
-                ],
-              ),
-            ),
-            const PopupMenuDivider(),
-            const PopupMenuItem(
-              value: 'logout',
-              child: Row(
-                children: [
-                  Icon(Icons.logout, size: 18, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text('Logout', style: TextStyle(color: Colors.red)),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(width: 8),
-      ],
+      // actions: [
+      //   // Profile Menu
+      //   PopupMenuButton<String>(
+      //     icon: const CircleAvatar(
+      //       radius: 16,
+      //       backgroundColor: Colors.white,
+      //       child: Icon(
+      //         Icons.person,
+      //         color: Color(0xFF9C27B0),
+      //         size: 20,
+      //       ),
+      //     ),
+      //     onSelected: (value) => _handleProfileAction(context, value),
+      //     itemBuilder: (context) => [
+      //       const PopupMenuItem(
+      //         value: 'profile',
+      //         child: Row(
+      //           children: [
+      //             Icon(Icons.person, size: 18),
+      //             SizedBox(width: 8),
+      //             Text('Profile'),
+      //           ],
+      //         ),
+      //       ),
+      //       const PopupMenuItem(
+      //         value: 'settings',
+      //         child: Row(
+      //           children: [
+      //             Icon(Icons.settings, size: 18),
+      //             SizedBox(width: 8),
+      //             Text('Settings'),
+      //           ],
+      //         ),
+      //       ),
+      //       const PopupMenuDivider(),
+      //       const PopupMenuItem(
+      //         value: 'logout',
+      //         child: Row(
+      //           children: [
+      //             Icon(Icons.logout, size: 18, color: Colors.red),
+      //             SizedBox(width: 8),
+      //             Text('Logout', style: TextStyle(color: Colors.red)),
+      //           ],
+      //         ),
+      //       ),
+      //     ],
+      //   ),
+      //   const SizedBox(width: 8),
+      // ],
       elevation: 0,
       backgroundColor: const Color(0xFF9C27B0),
       foregroundColor: Colors.white,

@@ -1,7 +1,10 @@
+import 'package:admin_mi/screens/group/group_screen.dart';
 import 'package:flutter/material.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/user/user_screen.dart';
-import 'screens/group/group_screen.dart';
+import 'screens/event_management/event_management_screen.dart';
+import 'screens/course_management/course_management_screen.dart';
+import 'screens/settings_screen.dart';
 import 'widgets/custom_drawer.dart';
 import 'widgets/custom_navbar.dart';
 
@@ -50,12 +53,11 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const UserScreen(),
-    const GroupScreen(), // Instructors Management placeholder
-    const GroupScreen(), // Event Management placeholder  
-    const GroupScreen(), // Course placeholder
-    const GroupScreen(), // Group Management
-    const GroupScreen(), // Settings placeholder
-    const GroupScreen(), // Help & Support placeholder
+    const EventManagementScreen(), // Placeholder for Instructors Management
+    const EventManagementScreen(),
+    const CourseManagementScreen(),
+    const GroupScreen(),
+    const SettingsScreen(),
   ];
 
   final List<String> _titles = [
@@ -66,7 +68,6 @@ class _MainScreenState extends State<MainScreen> {
     'Course',
     'Group',
     'Settings',
-    'Help & Support',
   ];
 
   void _onItemTapped(int index) {
