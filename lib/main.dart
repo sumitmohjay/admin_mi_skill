@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/user/user_screen.dart';
 import 'screens/event_management/event_management_screen.dart';
+import 'screens/course_management/course_management_screen.dart';
+import 'screens/settings_screen.dart';
 import 'widgets/custom_drawer.dart';
 import 'widgets/custom_navbar.dart';
 
@@ -52,6 +54,9 @@ class _MainScreenState extends State<MainScreen> {
     const UserScreen(),
     const EventManagementScreen(), // Placeholder for Instructors Management
     const EventManagementScreen(),
+    const CourseManagementScreen(),
+    const EventManagementScreen(), // Placeholder for Group
+    const SettingsScreen(),
   ];
 
   final List<String> _titles = [
@@ -59,6 +64,9 @@ class _MainScreenState extends State<MainScreen> {
     'User Management',
     'Instructors Management',
     'Event Management',
+    'Course',
+    'Group',
+    'Settings',
   ];
 
   void _onItemTapped(int index) {
