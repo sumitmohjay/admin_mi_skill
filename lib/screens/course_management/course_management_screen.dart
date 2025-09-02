@@ -347,11 +347,12 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Row(
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
                           children: [
-                            Flexible(child: _buildInfoChip(Icons.category, course.category)),
-                            const SizedBox(width: 8),
-                            Flexible(child: _buildInfoChip(Icons.signal_cellular_alt, course.level)),
+                            _buildInfoChip(Icons.category, course.category),
+                            _buildInfoChip(Icons.signal_cellular_alt, course.level),
                           ],
                         ),
                       ],
@@ -364,12 +365,17 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
               // Course stats
               Row(
                 children: [
-                  Flexible(child: _buildStatChip(Icons.people, '${course.enrolledStudents.length}/${course.maxStudents}')),
-                  const SizedBox(width: 8),
-                  Flexible(child: _buildStatChip(Icons.access_time, '${course.duration}h')),
-                  const SizedBox(width: 8),
-                  Flexible(child: _buildStatChip(Icons.attach_money, '\$${course.price}')),
-                  const Spacer(),
+                  Expanded(
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        _buildStatChip(Icons.people, '${course.enrolledStudents.length}/${course.maxStudents}'),
+                        _buildStatChip(Icons.access_time, '${course.duration}h'),
+                        _buildStatChip(Icons.attach_money, '\$${course.price}'),
+                      ],
+                    ),
+                  ),
                   
                   // Action buttons
                   IconButton(
