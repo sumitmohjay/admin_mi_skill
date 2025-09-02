@@ -117,7 +117,7 @@ class CustomDrawer extends StatelessWidget {
                   onTap: () => onItemTapped(4),
                 ),
                 _buildDrawerItem(
-                  icon: Icons.shopping_cart,
+                  icon: Icons.groups,
                   title: 'Group',
                   index: 5,
                   isSelected: selectedIndex == 5,

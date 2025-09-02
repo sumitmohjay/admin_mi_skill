@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/user/user_screen.dart';
 import 'screens/event_management/event_management_screen.dart';
+import 'screens/instructor_management/instructor_management_screen.dart';
 import 'screens/course_management/course_management_screen.dart';
 import 'screens/settings_screen.dart';
 import 'widgets/custom_drawer.dart';
@@ -53,7 +54,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const UserScreen(),
-    const EventManagementScreen(), // Placeholder for Instructors Management
+    const InstructorManagementScreen(),
     const EventManagementScreen(),
     const CourseManagementScreen(),
     const GroupScreen(),

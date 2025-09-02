@@ -99,9 +99,9 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(width: 16),
               Expanded(
                 child: _buildStatCard(
-                  'Orders',
+                  'Student Enroll',
                   '567',
-                  Icons.shopping_cart,
+                  Icons.school,
                   const Color(0xFFF44336),
                 ),
               ),
