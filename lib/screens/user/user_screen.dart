@@ -182,7 +182,7 @@ class _UserScreenState extends State<UserScreen> {
       'name': 'David Brown',
       'email': 'david.brown@example.com',
       'role': 'User',
-      'status': 'Pending',
+      'status': 'Inactive',
       'avatar': 'DB',
       'joinDate': '2024-03-10',
       'lastActive': 'Never',
@@ -208,7 +208,7 @@ class _UserScreenState extends State<UserScreen> {
       'name': 'Emily Johnson',
       'email': 'emily.johnson@example.com',
       'role': 'User',
-      'status': 'Pending',
+      'status': 'Inactive',
       'avatar': 'EJ',
       'joinDate': '2024-03-15',
       'lastActive': 'Never',
@@ -223,7 +223,7 @@ class _UserScreenState extends State<UserScreen> {
       'name': 'Robert Davis',
       'email': 'robert.davis@example.com',
       'role': 'User',
-      'status': 'Pending',
+      'status': 'Inactive',
       'avatar': 'RD',
       'joinDate': '2024-03-18',
       'lastActive': 'Never',
@@ -238,7 +238,7 @@ class _UserScreenState extends State<UserScreen> {
       'name': 'Lisa Anderson',
       'email': 'lisa.anderson@example.com',
       'role': 'User',
-      'status': 'Pending',
+      'status': 'Inactive',
       'avatar': 'LA',
       'joinDate': '2024-03-20',
       'lastActive': 'Never',
@@ -357,7 +357,7 @@ class _UserScreenState extends State<UserScreen> {
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _buildStatCard('Pending', '${filteredUsers.where((u) => u['status'] == 'Pending').length}', Icons.schedule, const Color(0xFFFF9800)),
+                child: _buildStatCard('Inactive', '${filteredUsers.where((u) => u['status'] == 'Inactive').length}', Icons.schedule, const Color(0xFFFF9800)),
               ),
             ],
           ),
@@ -523,13 +523,13 @@ class _UserScreenState extends State<UserScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: _getStatusColor(user['status'] ?? 'Pending').withOpacity(0.1),
+                          color: _getStatusColor(user['status'] ?? 'Inactive').withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          user['status'] ?? 'Pending',
+                          user['status'] ?? 'Inactive',
                           style: TextStyle(
-                            color: _getStatusColor(user['status'] ?? 'Pending'),
+                            color: _getStatusColor(user['status'] ?? 'Inactive'),
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -621,7 +621,7 @@ class _UserScreenState extends State<UserScreen> {
   }
 
   List<PopupMenuEntry<String>> _buildMenuItems(Map<String, dynamic> user) {
-    List<PopupMenuEntry<String>> items = [
+    return [
       const PopupMenuItem(
         value: 'edit',
         child: Row(
@@ -643,48 +643,6 @@ class _UserScreenState extends State<UserScreen> {
         ),
       ),
     ];
-
-    // Add approve/reject for pending users
-    if (user['status'] == 'Pending') {
-      items.addAll([
-        const PopupMenuItem(
-          value: 'approve',
-          child: Row(
-            children: [
-              Icon(Icons.check, size: 16, color: Colors.green),
-              SizedBox(width: 8),
-              Text('Approve'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'reject',
-          child: Row(
-            children: [
-              Icon(Icons.close, size: 16, color: Colors.red),
-              SizedBox(width: 8),
-              Text('Reject'),
-            ],
-          ),
-        ),
-      ]);
-    } else {
-      // Add suspend for active users
-      items.add(
-        const PopupMenuItem(
-          value: 'suspend',
-          child: Row(
-            children: [
-              Icon(Icons.block, size: 16, color: Colors.orange),
-              SizedBox(width: 8),
-              Text('Suspend'),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return items;
   }
 
   void _handleUserAction(String action, Map<String, dynamic> user) {
@@ -694,15 +652,6 @@ class _UserScreenState extends State<UserScreen> {
         break;
       case 'delete':
         _showDeleteUserDialog(user);
-        break;
-      case 'suspend':
-        _showSuspendUserDialog(user);
-        break;
-      case 'approve':
-        _approveUser(user);
-        break;
-      case 'reject':
-        _rejectUser(user);
         break;
     }
   }
@@ -785,52 +734,6 @@ class _UserScreenState extends State<UserScreen> {
     );
   }
 
-  void _approveUser(Map<String, dynamic> user) {
-    setState(() {
-      user['status'] = 'Active';
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${user['name']} approved successfully'),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
-
-  void _rejectUser(Map<String, dynamic> user) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Reject ${user['name']}'),
-        content: Text('Are you sure you want to reject ${user['name']}? This will remove them from the system.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _users.removeWhere((u) => u['id'] == user['id']);
-              });
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('${user['name']} rejected and removed'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Reject'),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _showDeleteUserDialog(Map<String, dynamic> user) {
     showDialog(
@@ -845,6 +748,9 @@ class _UserScreenState extends State<UserScreen> {
           ),
           ElevatedButton(
             onPressed: () {
+              setState(() {
+                _users.removeWhere((u) => u['id'] == user['id']);
+              });
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -864,36 +770,5 @@ class _UserScreenState extends State<UserScreen> {
     );
   }
 
-  void _showSuspendUserDialog(Map<String, dynamic> user) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Suspend ${user['name']}'),
-        content: Text('Are you sure you want to suspend ${user['name']}? They will not be able to access their account.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('${user['name']} suspended successfully'),
-                  backgroundColor: Colors.orange,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Suspend'),
-          ),
-        ],
-      ),
-    );
-  }
 
 }

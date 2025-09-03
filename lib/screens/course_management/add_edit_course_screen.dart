@@ -65,6 +65,27 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
     _isActive = course.isActive;
   }
 
+  double _getResponsiveWidth(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
+    
+    if (screenWidth < 400) {
+      // Very small screens - use full width minus padding
+      return screenWidth - 32; // Account for 16px padding on each side
+    } else if (screenWidth < 600) {
+      // Small screens (mobile) - use 90% of screen width
+      return screenWidth * 0.9;
+    } else if (screenWidth < 900) {
+      // Medium screens (tablet) - use 80% of screen width
+      return screenWidth * 0.8;
+    } else if (screenWidth < 1200) {
+      // Large tablets/small desktop - use 75% of screen width
+      return screenWidth * 0.75;
+    } else {
+      // Large screens (desktop) - use 65% of screen width
+      return screenWidth * 0.65;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.course != null;
@@ -111,7 +132,7 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
           padding: const EdgeInsets.all(16),
           child: Center(
             child: SizedBox(
-              width: MediaQuery.of(context).size.width * 0.8,
+              width: _getResponsiveWidth(context),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -150,56 +171,48 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
                 title: 'Course Details',
                 icon: Icons.school_outlined,
                 children: [
-                  Row(
+                  _buildResponsiveRow(
+                    context,
                     children: [
-                      Expanded(
-                        child: _buildDropdownField(
-                          label: 'Category',
-                          value: _selectedCategory,
-                          items: _categories,
-                          onChanged: (value) => setState(() => _selectedCategory = value!),
-                        ),
+                      _buildDropdownField(
+                        label: 'Category',
+                        value: _selectedCategory,
+                        items: _categories,
+                        onChanged: (value) => setState(() => _selectedCategory = value!),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildDropdownField(
-                          label: 'Level',
-                          value: _selectedLevel,
-                          items: _levels,
-                          onChanged: (value) => setState(() => _selectedLevel = value!),
-                        ),
+                      _buildDropdownField(
+                        label: 'Level',
+                        value: _selectedLevel,
+                        items: _levels,
+                        onChanged: (value) => setState(() => _selectedLevel = value!),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Row(
+                  _buildResponsiveRow(
+                    context,
                     children: [
-                      Expanded(
-                        child: _buildTextField(
-                          controller: _priceController,
-                          label: 'Price (\$)',
-                          hint: '0.00',
-                          keyboardType: TextInputType.number,
-                          validator: (value) {
-                            if (value?.isEmpty == true) return 'Price is required';
-                            if (double.tryParse(value!) == null) return 'Enter valid price';
-                            return null;
-                          },
-                        ),
+                      _buildTextField(
+                        controller: _priceController,
+                        label: 'Price (\$)',
+                        hint: '0.00',
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value?.isEmpty == true) return 'Price is required';
+                          if (double.tryParse(value!) == null) return 'Enter valid price';
+                          return null;
+                        },
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildTextField(
-                          controller: _durationController,
-                          label: 'Duration (hours)',
-                          hint: '0',
-                          keyboardType: TextInputType.number,
-                          validator: (value) {
-                            if (value?.isEmpty == true) return 'Duration is required';
-                            if (int.tryParse(value!) == null) return 'Enter valid duration';
-                            return null;
-                          },
-                        ),
+                      _buildTextField(
+                        controller: _durationController,
+                        label: 'Duration (hours)',
+                        hint: '0',
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value?.isEmpty == true) return 'Duration is required';
+                          if (int.tryParse(value!) == null) return 'Enter valid duration';
+                          return null;
+                        },
                       ),
                     ],
                   ),
@@ -231,22 +244,18 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
                 title: 'Schedule',
                 icon: Icons.calendar_today_outlined,
                 children: [
-                  Row(
+                  _buildResponsiveRow(
+                    context,
                     children: [
-                      Expanded(
-                        child: _buildDateField(
-                          label: 'Start Date',
-                          date: _startDate,
-                          onTap: () => _selectDate(context, true),
-                        ),
+                      _buildDateField(
+                        label: 'Start Date',
+                        date: _startDate,
+                        onTap: () => _selectDate(context, true),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildDateField(
-                          label: 'End Date',
-                          date: _endDate,
-                          onTap: () => _selectDate(context, false),
-                        ),
+                      _buildDateField(
+                        label: 'End Date',
+                        date: _endDate,
+                        onTap: () => _selectDate(context, false),
                       ),
                     ],
                   ),
@@ -314,6 +323,31 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildResponsiveRow(BuildContext context, {required List<Widget> children}) {
+    double screenWidth = MediaQuery.of(context).size.width;
+    
+    // For small screens (< 600px), stack fields vertically
+    if (screenWidth < 600) {
+      return Column(
+        children: children.map((child) => Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          child: child,
+        )).toList(),
+      );
+    }
+    
+    // For larger screens, display fields in a row
+    List<Widget> rowChildren = [];
+    for (int i = 0; i < children.length; i++) {
+      rowChildren.add(Expanded(child: children[i]));
+      if (i < children.length - 1) {
+        rowChildren.add(const SizedBox(width: 16));
+      }
+    }
+    
+    return Row(children: rowChildren);
   }
 
   Widget _buildSectionCard({

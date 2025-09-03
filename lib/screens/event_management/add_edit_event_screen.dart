@@ -62,6 +62,31 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
     _imageUrl = event.imageUrl;
   }
 
+  Widget _buildResponsiveRow(BuildContext context, {required List<Widget> children}) {
+    double screenWidth = MediaQuery.of(context).size.width;
+    
+    // For small screens (< 600px), stack fields vertically
+    if (screenWidth < 600) {
+      return Column(
+        children: children.map((child) => Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          child: child,
+        )).toList(),
+      );
+    }
+    
+    // For larger screens, display fields in a row
+    List<Widget> rowChildren = [];
+    for (int i = 0; i < children.length; i++) {
+      rowChildren.add(Expanded(child: children[i]));
+      if (i < children.length - 1) {
+        rowChildren.add(const SizedBox(width: 16));
+      }
+    }
+    
+    return Row(children: rowChildren);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -120,44 +145,40 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
                   validator: (value) => value?.isEmpty == true ? 'Description is required' : null,
                 ),
                 const SizedBox(height: 16),
-                Row(
+                _buildResponsiveRow(
+                  context,
                   children: [
-                    Expanded(
-                      child: _buildDropdown<EventCategory>(
-                        label: 'Category',
-                        value: _selectedCategory,
-                        items: EventCategory.values,
-                        onChanged: (value) => setState(() => _selectedCategory = value!),
-                        itemBuilder: (category) => Row(
-                          children: [
-                            Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: category.color,
-                                shape: BoxShape.circle,
-                              ),
+                    _buildDropdown<EventCategory>(
+                      label: 'Category',
+                      value: _selectedCategory,
+                      items: EventCategory.values,
+                      onChanged: (value) => setState(() => _selectedCategory = value!),
+                      itemBuilder: (category) => Row(
+                        children: [
+                          Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: category.color,
+                              shape: BoxShape.circle,
                             ),
-                            const SizedBox(width: 8),
-                            Text(category.displayName),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(category.displayName),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildDropdown<EventMode>(
-                        label: 'Mode',
-                        value: _selectedMode,
-                        items: EventMode.values,
-                        onChanged: (value) => setState(() => _selectedMode = value!),
-                        itemBuilder: (mode) => Row(
-                          children: [
-                            Icon(mode.icon, size: 16),
-                            const SizedBox(width: 8),
-                            Text(mode.displayName),
-                          ],
-                        ),
+                    _buildDropdown<EventMode>(
+                      label: 'Mode',
+                      value: _selectedMode,
+                      items: EventMode.values,
+                      onChanged: (value) => setState(() => _selectedMode = value!),
+                      itemBuilder: (mode) => Row(
+                        children: [
+                          Icon(mode.icon, size: 16),
+                          const SizedBox(width: 8),
+                          Text(mode.displayName),
+                        ],
                       ),
                     ),
                   ],
@@ -185,37 +206,35 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
               _buildSectionHeader('Capacity & Pricing', Icons.people),
               const SizedBox(height: 16),
               _buildCard([
-                Row(
+                const SizedBox(height: 16),
+                _buildResponsiveRow(
+                  context,
                   children: [
-                    Expanded(
-                      child: _buildTextField(
-                        controller: _maxAttendeesController,
-                        label: 'Max Attendees',
-                        hint: 'Enter maximum capacity',
-                        icon: Icons.people,
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value?.isEmpty == true) return 'Max attendees is required';
-                          if (int.tryParse(value!) == null) return 'Enter a valid number';
-                          return null;
-                        },
-                      ),
+                    _buildTextField(
+                      controller: _maxAttendeesController,
+                      label: 'Max Attendees',
+                      hint: 'Enter maximum attendees',
+                      icon: Icons.people,
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value?.isEmpty == true) return 'Max attendees is required';
+                        final number = int.tryParse(value!);
+                        if (number == null || number <= 0) return 'Enter a valid number';
+                        return null;
+                      },
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildTextField(
-                        controller: _priceController,
-                        label: 'Price (\$)',
-                        hint: 'Leave empty for free',
-                        icon: Icons.attach_money,
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value?.isNotEmpty == true && double.tryParse(value!) == null) {
-                            return 'Enter a valid price';
-                          }
-                          return null;
-                        },
-                      ),
+                    _buildTextField(
+                      controller: _priceController,
+                      label: 'Price (₹)',
+                      hint: 'Enter price',
+                      icon: Icons.currency_rupee,
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value?.isEmpty == true) return 'Price is required';
+                        final number = double.tryParse(value!);
+                        if (number == null || number < 0) return 'Enter a valid price';
+                        return null;
+                      },
                     ),
                   ],
                 ),
@@ -241,16 +260,6 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
                   icon: Icons.phone,
                   keyboardType: TextInputType.phone,
                 ),
-                if (_selectedMode != EventMode.offline) ...[
-                  const SizedBox(height: 16),
-                  _buildTextField(
-                    controller: _meetingLinkController,
-                    label: 'Meeting Link',
-                    hint: 'Enter meeting/streaming link',
-                    icon: Icons.link,
-                    keyboardType: TextInputType.url,
-                  ),
-                ],
               ]),
               const SizedBox(height: 24),
 

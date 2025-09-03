@@ -141,24 +141,14 @@ class _InstructorDetailScreenState extends State<InstructorDetailScreen> {
   Widget _buildStatsCards() {
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.9,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              _buildStatCard(Icons.people, widget.instructor.totalStudents.toString(), 'Students'),
-              const SizedBox(width: 12),
-              _buildStatCard(Icons.play_circle, widget.instructor.totalCourses.toString(), 'Courses'),
-              const SizedBox(width: 12),
-              _buildStatCard(Icons.video_library, widget.instructor.uploadedVideos.toString(), 'Videos'),
-              const SizedBox(width: 12),
-              _buildStatCard(Icons.live_tv, widget.instructor.liveSessions.toString(), 'Live Sessions'),
-              const SizedBox(width: 12),
-              _buildStatCard(Icons.quiz, widget.instructor.quizzesCreated.toString(), 'Quizzes'),
-            ],
-          ),
-        ),
+      child: Row(
+        children: [
+          Expanded(child: _buildStatCard(Icons.people, widget.instructor.totalStudents.toString(), 'Students')),
+          const SizedBox(width: 12),
+          Expanded(child: _buildStatCard(Icons.play_circle, widget.instructor.totalCourses.toString(), 'Courses')),
+          const SizedBox(width: 12),
+          Expanded(child: _buildStatCard(Icons.video_library, widget.instructor.uploadedVideos.toString(), 'Videos')),
+        ],
       ),
     );
   }

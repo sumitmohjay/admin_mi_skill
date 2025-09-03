@@ -389,149 +389,218 @@ class UserDetailScreen extends StatelessWidget {
   }
 
   Widget _buildCourseCard(Map<String, dynamic> course) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Course header
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  course['title'] ?? 'Unknown Course',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _getCourseStatusColor(course['status']).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  course['status'] ?? 'Just Started',
-                  style: TextStyle(
-                    color: _getCourseStatusColor(course['status'] ?? 'Just Started'),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
+    return Builder(
+      builder: (context) {
+        double screenWidth = MediaQuery.of(context).size.width;
+        double cardWidth;
+
+        if (screenWidth < 380) {
+          cardWidth = screenWidth * 0.95; // very small screens
+        } else if (screenWidth < 600) {
+          cardWidth = screenWidth * 0.9;  // small screens
+        } else {
+          cardWidth = screenWidth * 0.8;  // larger screens
+        }
+
+        return Container(
+          width: cardWidth,
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F9FA),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.withOpacity(0.2)),
           ),
-          const SizedBox(height: 12),
-          
-          // Progress bar
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Progress',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
+              // Course header
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      course['title'] ?? 'Unknown Course',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _getCourseStatusColor(course['status']).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      course['status'] ?? 'Just Started',
+                      style: TextStyle(
+                        color: _getCourseStatusColor(course['status'] ?? 'Just Started'),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // --- Progress bar ---
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Progress',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
+                            '${course['progress'] ?? 0}%',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      LinearProgressIndicator(
+                        value: (course['progress'] ?? 0) / 100,
+                        backgroundColor: Colors.grey[300],
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          _getCourseStatusColor(course['status'] ?? 'Just Started'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Course details - responsive layout
+            screenWidth < 380
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildCourseDetailItem(
+                        'Enrolled',
+                        course['enrolledDate'] ?? 'Unknown',
+                        Icons.calendar_today,
+                      ),
+                      if (course['completionDate'] != null) ...[
+                        const SizedBox(height: 4),
+                        _buildCourseDetailItem(
+                          'Completed',
+                          course['completionDate'] ?? 'Unknown',
+                          Icons.check_circle,
+                        ),
+                      ],
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Expanded(
+                        child: _buildCourseDetailItem(
+                          'Enrolled',
+                          course['enrolledDate'] ?? 'Unknown',
+                          Icons.calendar_today,
+                        ),
+                      ),
+                      if (course['completionDate'] != null)
+                        Expanded(
+                          child: _buildCourseDetailItem(
+                            'Completed',
+                            course['completionDate'] ?? 'Unknown',
+                            Icons.check_circle,
                           ),
                         ),
+                    ],
+                  ),
+            const SizedBox(height: 8),
+
+            // Rating and feedback - responsive layout
+            if (course['rating'] != null) ...[
+              const SizedBox(height: 12),
+              screenWidth < 380
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.star, color: Colors.amber, size: 16),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${course['rating'] ?? 0}/5',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (course['feedback'] != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            course['feedback'] ?? '',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[600],
+                              fontStyle: FontStyle.italic,
+                            ),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        const Icon(Icons.star, color: Colors.amber, size: 16),
+                        const SizedBox(width: 4),
                         Text(
-                          '${course['progress'] ?? 0}%',
+                          '${course['rating'] ?? 0}/5',
                           style: const TextStyle(
                             fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w600,
                             color: Colors.black87,
                           ),
                         ),
+                        if (course['feedback'] != null) ...[
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              course['feedback'] ?? '',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                                fontStyle: FontStyle.italic,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    LinearProgressIndicator(
-                      value: (course['progress'] ?? 0) / 100,
-                      backgroundColor: Colors.grey[300],
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        _getCourseStatusColor(course['status'] ?? 'Just Started'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ],
-          ),
-          const SizedBox(height: 12),
-          
-          // Course details
-          Row(
-            children: [
-              Expanded(
-                child: _buildCourseDetailItem(
-                  'Enrolled',
-                  course['enrolledDate'] ?? 'Unknown',
-                  Icons.calendar_today,
-                ),
-              ),
-              if (course['completionDate'] != null)
-                Expanded(
-                  child: _buildCourseDetailItem(
-                    'Completed',
-                    course['completionDate'] ?? 'Unknown',
-                    Icons.check_circle,
-                  ),
-                ),
-            ],
-          ),
-          
-          // Rating and feedback
-          if (course['rating'] != null) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(Icons.star, color: Colors.amber, size: 16),
-                const SizedBox(width: 4),
-                Text(
-                  '${course['rating'] ?? 0}/5',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-                if (course['feedback'] != null) ...[
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      course['feedback'] ?? '',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                        fontStyle: FontStyle.italic,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ],
-            ),
           ],
-        ],
-      ),
-    );
+        ),
+      );
+    },
+  );
   }
 
   Widget _buildCourseDetailItem(String label, String value, IconData icon) {

@@ -197,8 +197,8 @@ class HomeScreen extends StatelessWidget {
                 ),
                 const Divider(height: 1),
                 _buildActivityItem(
-                  'Order completed',
-                  'Order #1234 has been delivered',
+                  'Course Purchased', 
+                  'Total courses purchased',
                   '15 minutes ago',
                   Icons.check_circle,
                   const Color(0xFF2196F3),

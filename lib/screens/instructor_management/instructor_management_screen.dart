@@ -718,6 +718,11 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
       'DevOps',
     ];
     
+    // Ensure the instructor's current specialization is in the list
+    if (!specializations.contains(instructor.specialization)) {
+      specializations.add(instructor.specialization);
+    }
+    
     final availableSkills = [
       'Flutter', 'Dart', 'React', 'JavaScript', 'Python', 'Java',
       'Swift', 'Kotlin', 'Node.js', 'Firebase', 'AWS', 'Docker',
