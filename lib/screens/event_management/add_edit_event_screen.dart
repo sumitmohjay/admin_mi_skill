@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
+import 'dart:typed_data';
 import '../../models/event.dart';
+import '../../services/api_service.dart';
 
 class AddEditEventScreen extends StatefulWidget {
   final Event? event;
@@ -28,11 +34,23 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
   final _meetingLinkController = TextEditingController();
   final _tagsController = TextEditingController();
 
-  DateTime? _selectedDateTime;
+  DateTime? _selectedStartDate;
+  DateTime? _selectedEndDate;
+  TimeOfDay? _selectedStartTime;
+  TimeOfDay? _selectedEndTime;
   EventMode _selectedMode = EventMode.offline;
   EventCategory _selectedCategory = EventCategory.workshop;
   List<String> _resources = [];
   String? _imageUrl;
+
+  // File uploads
+  final List<File> _selectedImages = [];
+  final List<Uint8List> _selectedImageBytes = [];
+  final List<File> _selectedVideos = [];
+  final List<String> _uploadedImageUrls = []; // Store uploaded image URLs
+  final List<String> _uploadedVideoUrls = []; // Store uploaded video URLs
+  bool _isUploading = false;
+  bool _isCreating = false;
 
   bool get isEditing => widget.event != null;
 
@@ -55,7 +73,10 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
     _contactPhoneController.text = event.contactPhone ?? '';
     _meetingLinkController.text = event.meetingLink ?? '';
     _tagsController.text = event.tags.join(', ');
-    _selectedDateTime = event.dateTime;
+    _selectedStartDate = event.dateTime;
+    _selectedEndDate = event.dateTime.add(const Duration(days: 1));
+    _selectedStartTime = TimeOfDay.fromDateTime(event.dateTime);
+    _selectedEndTime = TimeOfDay.fromDateTime(event.dateTime.add(const Duration(hours: 2)));
     _selectedMode = event.mode;
     _selectedCategory = event.category;
     _resources = List.from(event.resources);
@@ -106,14 +127,30 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: _saveEvent,
-            child: const Text(
-              'SAVE',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            onPressed: (_isCreating || _isUploading) ? null : _saveEvent,
+            child: (_isCreating || _isUploading)
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(_isUploading ? 'UPLOADING...' : 'CREATING...'),
+                    ],
+                  )
+                : const Text(
+                    'SAVE',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
           ),
         ],
       ),
@@ -133,7 +170,7 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
                   label: 'Event Title',
                   hint: 'Enter event title',
                   icon: Icons.title,
-                  validator: (value) => value?.isEmpty == true ? 'Title is required' : null,
+                  validator: null, // Made optional
                 ),
                 const SizedBox(height: 16),
                 _buildTextField(
@@ -142,7 +179,7 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
                   hint: 'Enter event description',
                   icon: Icons.description,
                   maxLines: 3,
-                  validator: (value) => value?.isEmpty == true ? 'Description is required' : null,
+                  validator: null, // Made optional
                 ),
                 const SizedBox(height: 16),
                 _buildResponsiveRow(
@@ -197,7 +234,7 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
                   label: 'Venue',
                   hint: _selectedMode == EventMode.online ? 'Online Platform' : 'Enter venue address',
                   icon: _selectedMode == EventMode.online ? Icons.computer : Icons.location_on,
-                  validator: (value) => value?.isEmpty == true ? 'Venue is required' : null,
+                  validator: null, // Made optional
                 ),
               ]),
               const SizedBox(height: 24),
@@ -217,7 +254,7 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
                       icon: Icons.people,
                       keyboardType: TextInputType.number,
                       validator: (value) {
-                        if (value?.isEmpty == true) return 'Max attendees is required';
+                        if (value?.isEmpty == true) return null; // Made optional
                         final number = int.tryParse(value!);
                         if (number == null || number <= 0) return 'Enter a valid number';
                         return null;
@@ -230,7 +267,7 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
                       icon: Icons.currency_rupee,
                       keyboardType: TextInputType.number,
                       validator: (value) {
-                        if (value?.isEmpty == true) return 'Price is required';
+                        if (value?.isEmpty == true) return null; // Made optional
                         final number = double.tryParse(value!);
                         if (number == null || number < 0) return 'Enter a valid price';
                         return null;
@@ -277,6 +314,13 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
                 _buildResourcesSection(),
                 const SizedBox(height: 16),
                 _buildImageUrlField(),
+              ]),
+              
+              const SizedBox(height: 24),
+              _buildSectionHeader('Media Files', Icons.attach_file),
+              const SizedBox(height: 16),
+              _buildCard([
+                _buildFileUploadSection(),
               ]),
               const SizedBox(height: 32),
             ],
@@ -415,8 +459,9 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Start Date & Time Section
         const Text(
-          'Date & Time',
+          'Start Date & Time',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w500,
@@ -425,7 +470,7 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
         ),
         const SizedBox(height: 8),
         InkWell(
-          onTap: _selectDateTime,
+          onTap: _selectStartDate,
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -435,16 +480,16 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.schedule, color: Color(0xFF9C27B0)),
+                const Icon(Icons.event, color: Color(0xFF4CAF50)),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    _selectedDateTime != null
-                        ? DateFormat('MMM dd, yyyy - hh:mm a').format(_selectedDateTime!)
-                        : 'Select date and time',
+                    _selectedStartDate != null && _selectedStartTime != null
+                        ? '${DateFormat('MMM dd, yyyy').format(_selectedStartDate!)} at ${_selectedStartTime!.format(context)}'
+                        : 'Select start date and time',
                     style: TextStyle(
                       fontSize: 16,
-                      color: _selectedDateTime != null ? Colors.black87 : Colors.grey[600],
+                      color: _selectedStartDate != null ? Colors.black87 : Colors.grey[600],
                     ),
                   ),
                 ),
@@ -453,6 +498,270 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
             ),
           ),
         ),
+        
+        const SizedBox(height: 16),
+        
+        // End Date & Time Section
+        const Text(
+          'End Date & Time',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: _selectEndDate,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.event_available, color: Color(0xFFF44336)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _selectedEndDate != null && _selectedEndTime != null
+                        ? '${DateFormat('MMM dd, yyyy').format(_selectedEndDate!)} at ${_selectedEndTime!.format(context)}'
+                        : 'Select end date and time',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: _selectedEndDate != null ? Colors.black87 : Colors.grey[600],
+                    ),
+                  ),
+                ),
+                const Icon(Icons.arrow_drop_down, color: Colors.grey),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFileUploadSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Images Section
+        Row(
+          children: [
+            const Text(
+              'Images',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const Spacer(),
+            ElevatedButton.icon(
+              onPressed: _isUploading ? null : _pickImages,
+              icon: const Icon(Icons.add_photo_alternate, size: 18),
+              label: const Text('Add Images'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF9C27B0),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (_selectedImages.isNotEmpty) ...[
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _selectedImages.asMap().entries.map((entry) {
+              final index = entry.key;
+              final file = entry.value;
+              return Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: kIsWeb && index < _selectedImageBytes.length
+                          ? Image.memory(
+                              _selectedImageBytes[index],
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                            )
+                          : Image.file(
+                              file,
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                            ),
+                    ),
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedImages.removeAt(index);
+                            if (kIsWeb && index < _selectedImageBytes.length) {
+                              _selectedImageBytes.removeAt(index);
+                            }
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
+        ] else
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Center(
+              child: Text(
+                'No images selected',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ),
+        
+        const SizedBox(height: 16),
+        
+        // Videos Section
+        Row(
+          children: [
+            const Text(
+              'Videos',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const Spacer(),
+            ElevatedButton.icon(
+              onPressed: _isUploading ? null : _pickVideos,
+              icon: const Icon(Icons.video_call, size: 18),
+              label: const Text('Add Videos'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2196F3),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (_selectedVideos.isNotEmpty) ...[
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _selectedVideos.asMap().entries.map((entry) {
+              final index = entry.key;
+              final file = entry.value;
+              return Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Stack(
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.videocam,
+                        size: 32,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedVideos.removeAt(index);
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 4,
+                      left: 4,
+                      right: 4,
+                      child: Text(
+                        file.path.split('/').last,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.black87,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ] else
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Center(
+              child: Text(
+                'No videos selected',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -573,17 +882,19 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
     );
   }
 
-  Future<void> _selectDateTime() async {
-    final date = await showDatePicker(
+  Future<void> _selectStartDate() async {
+    // Select start date
+    final startDate = await showDatePicker(
       context: context,
-      initialDate: _selectedDateTime ?? DateTime.now().add(const Duration(days: 1)),
+      initialDate: _selectedStartDate ?? DateTime.now().add(const Duration(days: 1)),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
+      helpText: 'Select Start Date',
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF9C27B0),
+              primary: Color(0xFF4CAF50),
               onPrimary: Colors.white,
               surface: Colors.white,
               onSurface: Colors.black,
@@ -594,15 +905,17 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
       },
     );
 
-    if (date != null) {
-      final time = await showTimePicker(
+    if (startDate != null) {
+      // Select start time
+      final startTime = await showTimePicker(
         context: context,
-        initialTime: TimeOfDay.fromDateTime(_selectedDateTime ?? DateTime.now()),
+        initialTime: _selectedStartTime ?? TimeOfDay.now(),
+        helpText: 'Select Start Time',
         builder: (context, child) {
           return Theme(
             data: Theme.of(context).copyWith(
               colorScheme: const ColorScheme.light(
-                primary: Color(0xFF9C27B0),
+                primary: Color(0xFF4CAF50),
                 onPrimary: Colors.white,
                 surface: Colors.white,
                 onSurface: Colors.black,
@@ -613,15 +926,63 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
         },
       );
 
-      if (time != null) {
+      if (startTime != null) {
         setState(() {
-          _selectedDateTime = DateTime(
-            date.year,
-            date.month,
-            date.day,
-            time.hour,
-            time.minute,
+          _selectedStartDate = startDate;
+          _selectedStartTime = startTime;
+        });
+      }
+    }
+  }
+
+  Future<void> _selectEndDate() async {
+    // Select end date
+    final endDate = await showDatePicker(
+      context: context,
+      initialDate: _selectedEndDate ?? (_selectedStartDate?.add(const Duration(days: 1)) ?? DateTime.now().add(const Duration(days: 2))),
+      firstDate: _selectedStartDate ?? DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      helpText: 'Select End Date',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFFF44336),
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (endDate != null) {
+      // Select end time
+      final endTime = await showTimePicker(
+        context: context,
+        initialTime: _selectedEndTime ?? TimeOfDay.fromDateTime(DateTime.now().add(const Duration(hours: 2))),
+        helpText: 'Select End Time',
+        builder: (context, child) {
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: const ColorScheme.light(
+                primary: Color(0xFFF44336),
+                onPrimary: Colors.white,
+                surface: Colors.white,
+                onSurface: Colors.black,
+              ),
+            ),
+            child: child!,
           );
+        },
+      );
+
+      if (endTime != null) {
+        setState(() {
+          _selectedEndDate = endDate;
+          _selectedEndTime = endTime;
         });
       }
     }
@@ -674,51 +1035,235 @@ class _AddEditEventScreenState extends State<AddEditEventScreen> {
     });
   }
 
-  void _saveEvent() {
+  Future<void> _pickImages() async {
+    try {
+      final List<XFile> images = await ImagePicker().pickMultiImage();
+      if (images.isNotEmpty) {
+        setState(() {
+          _isUploading = true;
+        });
+
+        // Upload images immediately when selected
+        List<String> uploadedUrls = [];
+        
+        for (XFile image in images) {
+          try {
+            Map<String, dynamic> uploadResult;
+            
+            if (kIsWeb) {
+              // For web, read as bytes and upload with proper filename
+              final bytes = await image.readAsBytes();
+              uploadResult = await ApiService.uploadEventImage(image.name, imageBytes: bytes);
+            } else {
+              // For mobile, upload file
+              uploadResult = await ApiService.uploadEventImage(image.path);
+            }
+            
+            if (uploadResult['success'] == true && uploadResult['data'] != null) {
+              uploadedUrls.add(uploadResult['data'].toString());
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Failed to upload image: ${uploadResult['message']}')),
+              );
+            }
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error uploading image: $e')),
+            );
+          }
+        }
+
+        // Update state with uploaded URLs and files for display
+        _uploadedImageUrls.addAll(uploadedUrls);
+        
+        // Keep files for display purposes
+        if (kIsWeb) {
+          List<Uint8List> imageBytesList = [];
+          for (XFile image in images) {
+            final bytes = await image.readAsBytes();
+            imageBytesList.add(bytes);
+          }
+          _selectedImageBytes.addAll(imageBytesList);
+          _selectedImages.addAll(images.map((image) => File(image.name)).toList());
+        } else {
+          _selectedImages.addAll(images.map((image) => File(image.path)).toList());
+        }
+        
+        setState(() {
+          _isUploading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isUploading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error picking images: $e')),
+      );
+    }
+  }
+
+  Future<void> _pickVideos() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.video,
+        allowMultiple: true,
+      );
+      
+      if (result != null) {
+        setState(() {
+          _isUploading = true;
+        });
+
+        // Upload videos immediately when selected
+        List<String> uploadedUrls = [];
+        
+        for (var file in result.files) {
+          try {
+            Map<String, dynamic> uploadResult;
+            
+            if (kIsWeb) {
+              // For web, read as bytes and upload
+              uploadResult = await ApiService.uploadEventVideo(file.name, videoBytes: file.bytes);
+            } else {
+              // For mobile, upload file
+              uploadResult = await ApiService.uploadEventVideo(file.path!);
+            }
+            
+            if (uploadResult['success'] == true && uploadResult['data'] != null) {
+              uploadedUrls.add(uploadResult['data'].toString());
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Failed to upload video: ${uploadResult['message']}')),
+              );
+            }
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error uploading video: $e')),
+            );
+          }
+        }
+
+        // Update state with uploaded URLs and files for display
+        _uploadedVideoUrls.addAll(uploadedUrls);
+        
+        // Keep files for display purposes
+        if (kIsWeb) {
+          _selectedVideos.addAll(result.files.map((file) => File(file.name)).toList());
+        } else {
+          _selectedVideos.addAll(result.paths.map((path) => File(path!)).toList());
+        }
+        
+        setState(() {
+          _isUploading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isUploading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error picking videos: $e')),
+      );
+    }
+  }
+
+  Future<void> _saveEvent() async {
     if (_formKey.currentState!.validate()) {
-      if (_selectedDateTime == null) {
+      if (_selectedStartDate == null || _selectedEndDate == null || _selectedStartTime == null || _selectedEndTime == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select date and time')),
+          const SnackBar(content: Text('Please select start and end dates with times')),
         );
         return;
       }
 
-      final tags = _tagsController.text
-          .split(',')
-          .map((tag) => tag.trim())
-          .where((tag) => tag.isNotEmpty)
-          .toList();
+      setState(() {
+        _isCreating = true;
+      });
 
-      final event = Event(
-        id: widget.event?.id ?? 0,
-        title: _titleController.text,
-        description: _descriptionController.text,
-        venue: _venueController.text,
-        dateTime: _selectedDateTime!,
-        maxAttendees: int.parse(_maxAttendeesController.text),
-        price: _priceController.text.isEmpty ? null : double.parse(_priceController.text),
-        contactEmail: _contactEmailController.text.isEmpty ? null : _contactEmailController.text,
-        contactPhone: _contactPhoneController.text.isEmpty ? null : _contactPhoneController.text,
-        meetingLink: _meetingLinkController.text.isEmpty ? null : _meetingLinkController.text,
-        tags: tags,
-        mode: _selectedMode,
-        category: _selectedCategory,
-        resources: _resources,
-        imageUrl: _imageUrl,
-        createdAt: widget.event?.createdAt ?? DateTime.now(),
-        updatedAt: DateTime.now(),
-        currentAttendees: widget.event?.currentAttendees ?? 0,
-      );
+      try {
+        // Use already uploaded URLs from when user selected files
+        List<String> uploadedImageUrls = _uploadedImageUrls;
+        List<String> uploadedVideoUrls = _uploadedVideoUrls;
 
-      widget.onSave(event);
-      Navigator.pop(context);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(isEditing ? 'Event updated successfully' : 'Event created successfully'),
-          backgroundColor: const Color(0xFF4CAF50),
-        ),
-      );
+        // Create or update event
+        final tags = _tagsController.text
+            .split(',')
+            .map((tag) => tag.trim())
+            .where((tag) => tag.isNotEmpty)
+            .toList();
+
+        final Map<String, dynamic> eventResult;
+        
+        if (isEditing) {
+          // Update existing event
+          eventResult = await ApiService.updateEvent(
+            eventId: widget.event!.id,
+            title: _titleController.text.isEmpty ? 'Untitled Event' : _titleController.text,
+            description: _descriptionController.text.isEmpty ? 'No description provided' : _descriptionController.text,
+            location: _venueController.text.isEmpty ? 'TBD' : _venueController.text,
+            category: _selectedCategory.name,
+            eventType: _selectedMode.name,
+            startDate: DateFormat('yyyy-MM-dd').format(_selectedStartDate!),
+            endDate: DateFormat('yyyy-MM-dd').format(_selectedEndDate!),
+            registrationDeadline: DateFormat('yyyy-MM-dd').format(_selectedStartDate!.subtract(const Duration(days: 1))),
+            maxParticipants: _maxAttendeesController.text.isEmpty ? 0 : int.parse(_maxAttendeesController.text),
+            tags: tags,
+            startTime: '${_selectedStartTime!.hour.toString().padLeft(2, '0')}:${_selectedStartTime!.minute.toString().padLeft(2, '0')}',
+            endTime: '${_selectedEndTime!.hour.toString().padLeft(2, '0')}:${_selectedEndTime!.minute.toString().padLeft(2, '0')}',
+            contactEmail: _contactEmailController.text.isEmpty ? null : _contactEmailController.text,
+            contactPhone: _contactPhoneController.text.isEmpty ? null : _contactPhoneController.text,
+            images: uploadedImageUrls.isNotEmpty ? uploadedImageUrls : null,
+            videos: uploadedVideoUrls.isNotEmpty ? uploadedVideoUrls : null,
+          );
+        } else {
+          // Create new event
+          eventResult = await ApiService.createEvent(
+            title: _titleController.text.isEmpty ? 'Untitled Event' : _titleController.text,
+            description: _descriptionController.text.isEmpty ? 'No description provided' : _descriptionController.text,
+            location: _venueController.text.isEmpty ? 'TBD' : _venueController.text,
+            category: _selectedCategory.name,
+            eventType: _selectedMode.name,
+            startDate: DateFormat('yyyy-MM-dd').format(_selectedStartDate!),
+            endDate: DateFormat('yyyy-MM-dd').format(_selectedEndDate!),
+            registrationDeadline: DateFormat('yyyy-MM-dd').format(_selectedStartDate!.subtract(const Duration(days: 1))),
+            maxParticipants: _maxAttendeesController.text.isEmpty ? 0 : int.parse(_maxAttendeesController.text),
+            tags: tags,
+            startTime: '${_selectedStartTime!.hour.toString().padLeft(2, '0')}:${_selectedStartTime!.minute.toString().padLeft(2, '0')}',
+            endTime: '${_selectedEndTime!.hour.toString().padLeft(2, '0')}:${_selectedEndTime!.minute.toString().padLeft(2, '0')}',
+            contactEmail: _contactEmailController.text.isEmpty ? null : _contactEmailController.text,
+            contactPhone: _contactPhoneController.text.isEmpty ? null : _contactPhoneController.text,
+            images: uploadedImageUrls.isNotEmpty ? uploadedImageUrls : null,
+            videos: uploadedVideoUrls.isNotEmpty ? uploadedVideoUrls : null,
+          );
+        }
+
+        setState(() {
+          _isCreating = false;
+        });
+
+        if (eventResult['success'] == true) {
+          Navigator.pop(context, true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(isEditing ? 'Event updated successfully' : 'Event created successfully'),
+              backgroundColor: const Color(0xFF4CAF50),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to create event: ${eventResult['message']}')),
+          );
+        }
+      } catch (e) {
+        setState(() {
+          _isCreating = false;
+          _isUploading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     }
   }
 

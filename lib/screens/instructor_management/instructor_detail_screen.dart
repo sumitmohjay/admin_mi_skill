@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/instructor.dart';
-import '../../models/course.dart';
+import '../../services/api_service.dart';
 
 class InstructorDetailScreen extends StatefulWidget {
   final Instructor instructor;
@@ -16,10 +16,51 @@ class InstructorDetailScreen extends StatefulWidget {
 
 class _InstructorDetailScreenState extends State<InstructorDetailScreen> {
   int selectedTabIndex = 0;
-  
-  // Sample courses for this instructor
-  List<Course> get instructorCourses {
-    return Course.getSampleCourses().take(widget.instructor.totalCourses).toList();
+  bool _isLoading = true;
+  Map<String, dynamic>? _instructorData;
+  Map<String, dynamic>? _performance;
+  Map<String, dynamic>? _personalInfo;
+  List<dynamic> _courses = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInstructorDetails();
+  }
+
+  Future<void> _loadInstructorDetails() async {
+    try {
+      final result = await ApiService.getInstructorById(widget.instructor.id);
+      
+      if (result['success'] == true && result['data'] != null) {
+        setState(() {
+          _instructorData = result['data']['instructor'];
+          _performance = result['data']['performance'];
+          _personalInfo = result['data']['personalInfo'];
+          _courses = result['data']['courses'] ?? [];
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+        _showErrorSnackBar(result['message'] ?? 'Failed to load instructor details');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      _showErrorSnackBar('Error loading instructor details: $e');
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   @override
@@ -29,23 +70,36 @@ class _InstructorDetailScreenState extends State<InstructorDetailScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF9C27B0),
         foregroundColor: Colors.white,
-        title: Text(widget.instructor.name),
+        title: Text(_instructorData?['name'] ?? widget.instructor.name),
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildProfileHeader(),
-            _buildStatsCards(),
-            _buildTabSection(),
-            _buildTabContent(),
-          ],
-        ),
-      ),
+      body: _isLoading 
+        ? const Center(
+            child: CircularProgressIndicator(
+              color: Color(0xFF9C27B0),
+            ),
+          )
+        : SingleChildScrollView(
+            child: Column(
+              children: [
+                _buildProfileHeader(),
+                _buildStatsCards(),
+                _buildTabSection(),
+                _buildTabContent(),
+              ],
+            ),
+          ),
     );
   }
 
   Widget _buildProfileHeader() {
+    final instructor = _instructorData ?? {};
+    final name = instructor['name'] ?? widget.instructor.name;
+    final email = instructor['email'] ?? '';
+    final phoneNumber = instructor['phoneNumber'] ?? '';
+    final isActive = instructor['isActive'] ?? false;
+    final avatar = instructor['avatar'];
+    
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
@@ -55,99 +109,102 @@ class _InstructorDetailScreenState extends State<InstructorDetailScreen> {
           end: Alignment.bottomCenter,
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(50),
-                border: Border.all(color: Colors.white, width: 3),
-              ),
-              child: Center(
-                child: Text(
-                  widget.instructor.initials,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 32,
-                  ),
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 50,
+            backgroundColor: Colors.white.withValues(alpha: 0.2),
+            backgroundImage: avatar != null && avatar.toString().isNotEmpty
+                ? NetworkImage(avatar.toString())
+                : null,
+            child: avatar == null || avatar.toString().isEmpty
+                ? Text(
+                    name.isNotEmpty 
+                        ? name[0].toUpperCase()
+                        : 'I',
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  )
+                : null,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            name,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            email.isNotEmpty ? email : 'No email provided',
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.phone, color: Colors.white70, size: 20),
+              const SizedBox(width: 4),
+              Text(
+                phoneNumber.isNotEmpty ? phoneNumber : 'No phone',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              widget.instructor.name,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              widget.instructor.specialization,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.star, color: Colors.amber, size: 20),
-                const SizedBox(width: 4),
-                Text(
-                  widget.instructor.rating.toString(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
+              const SizedBox(width: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isActive 
+                      ? Colors.green.withValues(alpha: 0.2) 
+                      : Colors.red.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isActive ? Colors.green : Colors.red,
+                  ),
+                ),
+                child: Text(
+                  isActive ? 'Active' : 'Inactive',
+                  style: TextStyle(
+                    color: isActive ? Colors.green : Colors.red,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(width: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: widget.instructor.isActive 
-                        ? Colors.green.withOpacity(0.2) 
-                        : Colors.red.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: widget.instructor.isActive ? Colors.green : Colors.red,
-                    ),
-                  ),
-                  child: Text(
-                    widget.instructor.isActive ? 'Active' : 'Inactive',
-                    style: TextStyle(
-                      color: widget.instructor.isActive ? Colors.green : Colors.red,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildStatsCards() {
+    final performance = _performance ?? {};
+    final totalStudents = performance['totalStudents']?.toString() ?? '0';
+    final totalCourses = performance['totalCourses']?.toString() ?? '0';
+    final totalVideos = performance['totalVideos']?.toString() ?? '0';
+    
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          Expanded(child: _buildStatCard(Icons.people, widget.instructor.totalStudents.toString(), 'Students')),
+          Expanded(child: _buildStatCard(Icons.people, totalStudents, 'Students')),
           const SizedBox(width: 12),
-          Expanded(child: _buildStatCard(Icons.play_circle, widget.instructor.totalCourses.toString(), 'Courses')),
+          Expanded(child: _buildStatCard(Icons.play_circle, totalCourses, 'Courses')),
           const SizedBox(width: 12),
-          Expanded(child: _buildStatCard(Icons.video_library, widget.instructor.uploadedVideos.toString(), 'Videos')),
+          Expanded(child: _buildStatCard(Icons.video_library, totalVideos, 'Videos')),
         ],
       ),
     );
@@ -263,6 +320,17 @@ class _InstructorDetailScreenState extends State<InstructorDetailScreen> {
   }
 
   Widget _buildPersonalInfo() {
+    final personalInfo = _personalInfo ?? {};
+    final instructorData = _instructorData ?? {};
+    
+    final email = personalInfo['email'] ?? instructorData['email'] ?? '';
+    final phoneNumber = personalInfo['phoneNumber'] ?? instructorData['phoneNumber'] ?? '';
+    final bio = instructorData['bio'] ?? '';
+    final skills = List<String>.from(personalInfo['skills'] ?? instructorData['skills'] ?? []);
+    final role = instructorData['role'] ?? 'instructor';
+    final isActive = instructorData['isActive'] ?? false;
+    final joinDate = personalInfo['joinDate'] ?? instructorData['createdAt'] ?? '';
+    
     return Container(
       key: const ValueKey('personal_info'),
       decoration: BoxDecoration(
@@ -270,7 +338,7 @@ class _InstructorDetailScreenState extends State<InstructorDetailScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -290,11 +358,12 @@ class _InstructorDetailScreenState extends State<InstructorDetailScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            _buildInfoRow(Icons.email, 'Email', widget.instructor.email),
-            _buildInfoRow(Icons.phone, 'Phone', widget.instructor.phone),
-            _buildInfoRow(Icons.work, 'Specialization', widget.instructor.specialization),
-            _buildInfoRow(Icons.calendar_today, 'Join Date', 
-                '${widget.instructor.joinDate.day.toString().padLeft(2, '0')}/${widget.instructor.joinDate.month.toString().padLeft(2, '0')}/${widget.instructor.joinDate.year}'),
+            _buildInfoRow(Icons.email, 'Email', email.isNotEmpty ? email : 'Not provided'),
+            _buildInfoRow(Icons.phone, 'Phone', phoneNumber.isNotEmpty ? phoneNumber : 'Not provided'),
+            _buildInfoRow(Icons.work, 'Role', role.toUpperCase()),
+            _buildInfoRow(Icons.verified, 'Status', isActive ? 'Active' : 'Inactive'),
+            if (joinDate.isNotEmpty)
+              _buildInfoRow(Icons.calendar_today, 'Join Date', _formatDate(joinDate)),
             const SizedBox(height: 16),
             const Text(
               'Bio',
@@ -306,7 +375,7 @@ class _InstructorDetailScreenState extends State<InstructorDetailScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              widget.instructor.bio,
+              bio.isNotEmpty ? bio : 'No bio provided',
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[600],
@@ -323,29 +392,47 @@ class _InstructorDetailScreenState extends State<InstructorDetailScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: widget.instructor.skills.map((skill) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF9C27B0).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  skill,
-                  style: const TextStyle(
-                    color: Color(0xFF9C27B0),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+            skills.isNotEmpty 
+              ? Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: skills.map((skill) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF9C27B0).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      skill,
+                      style: const TextStyle(
+                        color: Color(0xFF9C27B0),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  )).toList(),
+                )
+              : Text(
+                  'No skills listed',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                    fontStyle: FontStyle.italic,
                   ),
                 ),
-              )).toList(),
-            ),
           ],
         ),
       ),
     );
+  }
+
+  String _formatDate(String dateString) {
+    try {
+      final date = DateTime.parse(dateString);
+      return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+    } catch (e) {
+      return dateString;
+    }
   }
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
@@ -389,7 +476,7 @@ class _InstructorDetailScreenState extends State<InstructorDetailScreen> {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
+                  color: Colors.grey.withValues(alpha: 0.1),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -409,7 +496,42 @@ class _InstructorDetailScreenState extends State<InstructorDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  ...instructorCourses.map((course) => _buildCourseItem(course)).toList(),
+                  _courses.isNotEmpty
+                    ? Column(
+                        children: _courses.map((course) => _buildCourseItem(course)).toList(),
+                      )
+                    : Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.school_outlined,
+                                size: 64,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No courses assigned yet',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'This instructor hasn\'t been assigned to any courses',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[500],
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                 ],
               ),
             ),
@@ -419,7 +541,13 @@ class _InstructorDetailScreenState extends State<InstructorDetailScreen> {
     );
   }
 
-  Widget _buildCourseItem(Course course) {
+  Widget _buildCourseItem(Map<String, dynamic> course) {
+    final title = course['title'] ?? 'Untitled Course';
+    final category = course['category'] ?? 'General';
+    final enrolledCount = course['enrolledStudents']?.length ?? 0;
+    final duration = course['duration'] ?? 0;
+    final isActive = course['isActive'] ?? true;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -445,7 +573,7 @@ class _InstructorDetailScreenState extends State<InstructorDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  course.title,
+                  title,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -454,7 +582,7 @@ class _InstructorDetailScreenState extends State<InstructorDetailScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  course.category,
+                  category,
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.grey[600],
@@ -466,7 +594,7 @@ class _InstructorDetailScreenState extends State<InstructorDetailScreen> {
                     Icon(Icons.people, size: 14, color: Colors.grey[600]),
                     const SizedBox(width: 4),
                     Text(
-                      '${course.enrolledStudents.length} students',
+                      '$enrolledCount students',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[600],
@@ -476,7 +604,7 @@ class _InstructorDetailScreenState extends State<InstructorDetailScreen> {
                     Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
                     const SizedBox(width: 4),
                     Text(
-                      '${course.duration}h',
+                      '${duration}h',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[600],
@@ -490,13 +618,13 @@ class _InstructorDetailScreenState extends State<InstructorDetailScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: course.isActive ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+              color: isActive ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              course.isActive ? 'Active' : 'Inactive',
+              isActive ? 'Active' : 'Inactive',
               style: TextStyle(
-                color: course.isActive ? Colors.green : Colors.red,
+                color: isActive ? Colors.green : Colors.red,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -508,6 +636,17 @@ class _InstructorDetailScreenState extends State<InstructorDetailScreen> {
   }
 
   Widget _buildPerformanceTab() {
+    final performance = _performance ?? {};
+    final instructorData = _instructorData ?? {};
+    
+    final totalStudents = performance['totalStudents']?.toString() ?? '0';
+    final totalCourses = performance['totalCourses']?.toString() ?? '0';
+    final totalVideos = performance['totalVideos']?.toString() ?? '0';
+    final avgRating = performance['avgRating']?.toString() ?? '0.0';
+    final quizzesCreated = performance['quizzesCreated']?.toString() ?? '0';
+    final assessmentsCreated = performance['assessmentsCreated']?.toString() ?? '0';
+    final liveSessions = performance['liveSessions']?.toString() ?? '0';
+    
     return Container(
       key: const ValueKey('performance'),
       decoration: BoxDecoration(
@@ -515,7 +654,7 @@ class _InstructorDetailScreenState extends State<InstructorDetailScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -535,12 +674,13 @@ class _InstructorDetailScreenState extends State<InstructorDetailScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            _buildPerformanceItem('Student Rating', widget.instructor.rating.toString(), Icons.star, Colors.amber),
-            _buildPerformanceItem('Total Students', widget.instructor.totalStudents.toString(), Icons.people, Colors.blue),
-            _buildPerformanceItem('Courses Created', widget.instructor.totalCourses.toString(), Icons.book, Colors.green),
-            _buildPerformanceItem('Live Sessions', widget.instructor.liveSessions.toString(), Icons.live_tv, Colors.red),
-            _buildPerformanceItem('Video Uploads', widget.instructor.uploadedVideos.toString(), Icons.video_library, Colors.purple),
-            _buildPerformanceItem('Quizzes Created', widget.instructor.quizzesCreated.toString(), Icons.quiz, Colors.orange),
+            _buildPerformanceItem('Total Students', totalStudents, Icons.people, Colors.blue),
+            _buildPerformanceItem('Total Courses', totalCourses, Icons.book, Colors.green),
+            _buildPerformanceItem('Total Videos', totalVideos, Icons.video_library, Colors.purple),
+            _buildPerformanceItem('Average Rating', avgRating, Icons.star, Colors.amber),
+            _buildPerformanceItem('Quizzes Created', quizzesCreated, Icons.quiz, Colors.orange),
+            _buildPerformanceItem('Assessments Created', assessmentsCreated, Icons.assignment, Colors.teal),
+            _buildPerformanceItem('Live Sessions', liveSessions, Icons.live_tv, Colors.red),
           ],
         ),
       ),

@@ -1,79 +1,479 @@
 class Course {
   final String id;
   final String title;
+  final String slug;
   final String description;
-  final String instructor;
-  final String category;
   final double price;
-  final int duration; // in hours
-  final String level; // Beginner, Intermediate, Advanced
-  final String imageUrl;
-  final DateTime startDate;
-  final DateTime endDate;
-  final int maxStudents;
-  final List<String> enrolledStudents;
-  final List<String> tags;
-  final bool isActive;
+  final Instructor instructor;
+  final String thumbnail;
+  final Category category;
+  final Subcategory subcategory;
+  final String level;
+  final bool published;
+  final bool isFeatured;
+  final List<EnrolledStudent> enrolledStudents;
+  final List<Rating> ratings;
+  final double averageRating;
+  final int totalVideos;
+  final int totalDuration;
+  final List<CourseSection> sections;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? deletedAt;
 
   Course({
     required this.id,
     required this.title,
+    required this.slug,
     required this.description,
-    required this.instructor,
-    required this.category,
     required this.price,
-    required this.duration,
+    required this.instructor,
+    required this.thumbnail,
+    required this.category,
+    required this.subcategory,
     required this.level,
-    required this.imageUrl,
-    required this.startDate,
-    required this.endDate,
-    required this.maxStudents,
+    required this.published,
+    required this.isFeatured,
     required this.enrolledStudents,
-    required this.tags,
-    required this.isActive,
+    required this.ratings,
+    required this.averageRating,
+    required this.totalVideos,
+    required this.totalDuration,
+    required this.sections,
     required this.createdAt,
     required this.updatedAt,
+    this.deletedAt,
   });
+
+  factory Course.fromJson(Map<String, dynamic> json) {
+    try {
+      return Course(
+        id: json['_id']?.toString() ?? '',
+        title: json['title']?.toString() ?? '',
+        slug: json['slug']?.toString() ?? '',
+        description: json['description']?.toString() ?? '',
+        price: _parseDouble(json['price']),
+        instructor: _parseInstructor(json['instructor']),
+        thumbnail: json['thumbnail']?.toString() ?? '',
+        category: _parseCategory(json['category']),
+        subcategory: _parseSubcategory(json['subcategory']),
+        level: json['level']?.toString() ?? 'beginner',
+        published: _parseBool(json['published']),
+        isFeatured: _parseBool(json['isFeatured']),
+        enrolledStudents: _parseEnrolledStudents(json['enrolledStudents']),
+        ratings: _parseRatings(json['ratings']),
+        averageRating: _parseDouble(json['averageRating']),
+        totalVideos: _parseInt(json['totalVideos']),
+        totalDuration: _parseInt(json['totalDuration']),
+        sections: _parseSections(json['sections']),
+        createdAt: _parseDateTime(json['createdAt']) ?? DateTime.now(),
+        updatedAt: _parseDateTime(json['updatedAt']) ?? DateTime.now(),
+        deletedAt: json['deletedAt']?.toString(),
+      );
+    } catch (e) {
+      print('Error parsing Course from JSON: $e');
+      print('JSON: $json');
+      rethrow;
+    }
+  }
+
+  static double _parseDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
+
+  static int _parseInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  static bool _parseBool(dynamic value) {
+    if (value == null) return false;
+    if (value is bool) return value;
+    if (value is String) return value.toLowerCase() == 'true';
+    if (value is int) return value != 0;
+    return false;
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
+
+  static Instructor _parseInstructor(dynamic value) {
+    if (value == null || value is! Map<String, dynamic>) {
+      return Instructor(id: '', name: 'Unknown', email: '');
+    }
+    try {
+      return Instructor.fromJson(value);
+    } catch (e) {
+      print('Error parsing instructor: $e');
+      return Instructor(id: '', name: 'Unknown', email: '');
+    }
+  }
+
+  static Category _parseCategory(dynamic value) {
+    if (value == null || value is! Map<String, dynamic>) {
+      return Category(id: '', name: 'Uncategorized');
+    }
+    try {
+      return Category.fromJson(value);
+    } catch (e) {
+      print('Error parsing category: $e');
+      return Category(id: '', name: 'Uncategorized');
+    }
+  }
+
+  static Subcategory _parseSubcategory(dynamic value) {
+    if (value == null || value is! Map<String, dynamic>) {
+      return Subcategory(id: '', name: 'General');
+    }
+    try {
+      return Subcategory.fromJson(value);
+    } catch (e) {
+      print('Error parsing subcategory: $e');
+      return Subcategory(id: '', name: 'General');
+    }
+  }
+
+  static List<EnrolledStudent> _parseEnrolledStudents(dynamic value) {
+    if (value == null || value is! List) {
+      print('EnrolledStudents is null or not a list: $value');
+      return [];
+    }
+    try {
+      print('Parsing ${value.length} enrolled students');
+      final students = value
+          .map((student) {
+            try {
+              return EnrolledStudent.fromJson(student);
+            } catch (e) {
+              print('Error parsing individual student: $e, data: $student');
+              return null;
+            }
+          })
+          .where((student) => student != null)
+          .cast<EnrolledStudent>()
+          .toList();
+      print('Successfully parsed ${students.length} enrolled students');
+      return students;
+    } catch (e) {
+      print('Error parsing enrolled students: $e');
+      return [];
+    }
+  }
+
+  static List<Rating> _parseRatings(dynamic value) {
+    if (value == null || value is! List) return [];
+    try {
+      return value
+          .map((rating) => Rating.fromJson(rating))
+          .toList();
+    } catch (e) {
+      print('Error parsing ratings: $e');
+      return [];
+    }
+  }
+
+  static List<CourseSection> _parseSections(dynamic value) {
+    if (value == null || value is! List) return [];
+    try {
+      return value
+          .map((section) => CourseSection.fromJson(section))
+          .toList();
+    } catch (e) {
+      print('Error parsing sections: $e');
+      return [];
+    }
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'title': title,
+      'slug': slug,
+      'description': description,
+      'price': price,
+      'instructor': instructor.toJson(),
+      'thumbnail': thumbnail,
+      'category': category.toJson(),
+      'subcategory': subcategory.toJson(),
+      'level': level,
+      'published': published,
+      'isFeatured': isFeatured,
+      'enrolledStudents': enrolledStudents.map((s) => s.toJson()).toList(),
+      'ratings': ratings.map((r) => r.toJson()).toList(),
+      'averageRating': averageRating,
+      'totalVideos': totalVideos,
+      'totalDuration': totalDuration,
+      'sections': sections.map((s) => s.toJson()).toList(),
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+      'deletedAt': deletedAt,
+    };
+  }
 
   Course copyWith({
     String? id,
     String? title,
+    String? slug,
     String? description,
-    String? instructor,
-    String? category,
     double? price,
-    int? duration,
+    Instructor? instructor,
+    String? thumbnail,
+    Category? category,
+    Subcategory? subcategory,
     String? level,
-    String? imageUrl,
-    DateTime? startDate,
-    DateTime? endDate,
-    int? maxStudents,
-    List<String>? enrolledStudents,
-    List<String>? tags,
-    bool? isActive,
+    bool? published,
+    bool? isFeatured,
+    List<EnrolledStudent>? enrolledStudents,
+    List<Rating>? ratings,
+    double? averageRating,
+    int? totalVideos,
+    int? totalDuration,
+    List<CourseSection>? sections,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? deletedAt,
   }) {
     return Course(
       id: id ?? this.id,
       title: title ?? this.title,
+      slug: slug ?? this.slug,
       description: description ?? this.description,
-      instructor: instructor ?? this.instructor,
-      category: category ?? this.category,
       price: price ?? this.price,
-      duration: duration ?? this.duration,
+      instructor: instructor ?? this.instructor,
+      thumbnail: thumbnail ?? this.thumbnail,
+      category: category ?? this.category,
+      subcategory: subcategory ?? this.subcategory,
       level: level ?? this.level,
-      imageUrl: imageUrl ?? this.imageUrl,
-      startDate: startDate ?? this.startDate,
-      endDate: endDate ?? this.endDate,
-      maxStudents: maxStudents ?? this.maxStudents,
+      published: published ?? this.published,
+      isFeatured: isFeatured ?? this.isFeatured,
       enrolledStudents: enrolledStudents ?? this.enrolledStudents,
-      tags: tags ?? this.tags,
-      isActive: isActive ?? this.isActive,
+      ratings: ratings ?? this.ratings,
+      averageRating: averageRating ?? this.averageRating,
+      totalVideos: totalVideos ?? this.totalVideos,
+      totalDuration: totalDuration ?? this.totalDuration,
+      sections: sections ?? this.sections,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+    );
+  }
+}
+
+class Instructor {
+  final String id;
+  final String name;
+  final String email;
+  final String? avatar;
+  final String? bio;
+
+  Instructor({
+    required this.id,
+    required this.name,
+    required this.email,
+    this.avatar,
+    this.bio,
+  });
+
+  factory Instructor.fromJson(Map<String, dynamic> json) {
+    return Instructor(
+      id: json['_id'] ?? '',
+      name: json['name'] ?? '',
+      email: json['email'] ?? '',
+      avatar: json['avatar'],
+      bio: json['bio'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'name': name,
+      'email': email,
+      'avatar': avatar,
+      'bio': bio,
+    };
+  }
+}
+
+class Category {
+  final String id;
+  final String name;
+
+  Category({
+    required this.id,
+    required this.name,
+  });
+
+  factory Category.fromJson(Map<String, dynamic> json) {
+    return Category(
+      id: json['_id'] ?? '',
+      name: json['name'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'name': name,
+    };
+  }
+}
+
+class Subcategory {
+  final String id;
+  final String name;
+
+  Subcategory({
+    required this.id,
+    required this.name,
+  });
+
+  factory Subcategory.fromJson(Map<String, dynamic> json) {
+    return Subcategory(
+      id: json['_id'] ?? '',
+      name: json['name'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'name': name,
+    };
+  }
+}
+
+class EnrolledStudent {
+  final String id;
+  final String name;
+  final String email;
+  final String avatar;
+
+  EnrolledStudent({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.avatar,
+  });
+
+  factory EnrolledStudent.fromJson(Map<String, dynamic> json) {
+    print('Parsing enrolled student: $json');
+    return EnrolledStudent(
+      id: json['_id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      avatar: json['avatar']?.toString() ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'name': name,
+      'email': email,
+      'avatar': avatar,
+    };
+  }
+}
+
+class Rating {
+  final int rating;
+  final String review;
+  final RatingUser user;
+  final DateTime createdAt;
+  final String id;
+
+  Rating({
+    required this.rating,
+    required this.review,
+    required this.user,
+    required this.createdAt,
+    required this.id,
+  });
+
+  factory Rating.fromJson(Map<String, dynamic> json) {
+    return Rating(
+      rating: json['rating'] ?? 0,
+      review: json['review'] ?? '',
+      user: RatingUser.fromJson(json['user'] ?? {}),
+      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      id: json['_id'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'rating': rating,
+      'review': review,
+      'user': user.toJson(),
+      'createdAt': createdAt.toIso8601String(),
+      '_id': id,
+    };
+  }
+}
+
+class RatingUser {
+  final String id;
+  final String name;
+  final String avatar;
+
+  RatingUser({
+    required this.id,
+    required this.name,
+    required this.avatar,
+  });
+
+  factory RatingUser.fromJson(Map<String, dynamic> json) {
+    return RatingUser(
+      id: json['_id'] ?? '',
+      name: json['name'] ?? '',
+      avatar: json['avatar'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'name': name,
+      'avatar': avatar,
+    };
+  }
+}
+
+class CourseSection {
+  final String id;
+  final String title;
+  final String description;
+  final int order;
+  final List<CourseVideo> videos;
+
+  CourseSection({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.order,
+    required this.videos,
+  });
+
+  factory CourseSection.fromJson(Map<String, dynamic> json) {
+    return CourseSection(
+      id: json['id'] ?? '',
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      order: json['order'] ?? 0,
+      videos: (json['videos'] as List<dynamic>?)
+          ?.map((video) => CourseVideo.fromJson(video))
+          .toList() ?? [],
     );
   }
 
@@ -82,144 +482,79 @@ class Course {
       'id': id,
       'title': title,
       'description': description,
-      'instructor': instructor,
-      'category': category,
-      'price': price,
-      'duration': duration,
-      'level': level,
-      'imageUrl': imageUrl,
-      'startDate': startDate.toIso8601String(),
-      'endDate': endDate.toIso8601String(),
-      'maxStudents': maxStudents,
-      'enrolledStudents': enrolledStudents,
-      'tags': tags,
-      'isActive': isActive,
-      'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
+      'order': order,
+      'videos': videos.map((v) => v.toJson()).toList(),
     };
   }
+}
 
-  factory Course.fromJson(Map<String, dynamic> json) {
-    return Course(
-      id: json['id'],
-      title: json['title'],
-      description: json['description'],
-      instructor: json['instructor'],
-      category: json['category'],
-      price: json['price'].toDouble(),
-      duration: json['duration'],
-      level: json['level'],
-      imageUrl: json['imageUrl'],
-      startDate: DateTime.parse(json['startDate']),
-      endDate: DateTime.parse(json['endDate']),
-      maxStudents: json['maxStudents'],
-      enrolledStudents: List<String>.from(json['enrolledStudents']),
-      tags: List<String>.from(json['tags']),
-      isActive: json['isActive'],
-      createdAt: DateTime.parse(json['createdAt']),
-      updatedAt: DateTime.parse(json['updatedAt']),
+class CourseVideo {
+  final String id;
+  final String title;
+  final String description;
+  final String url;
+  final int durationSeconds;
+  final int order;
+
+  CourseVideo({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.url,
+    required this.durationSeconds,
+    required this.order,
+  });
+
+  factory CourseVideo.fromJson(Map<String, dynamic> json) {
+    return CourseVideo(
+      id: json['id'] ?? '',
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      url: json['url'] ?? '',
+      durationSeconds: json['durationSeconds'] ?? 0,
+      order: json['order'] ?? 0,
     );
   }
 
-  // Static method to create sample data
-  static List<Course> getSampleCourses() {
-    final now = DateTime.now();
-    return [
-      Course(
-        id: '1',
-        title: 'Flutter Development Masterclass',
-        description: 'Complete Flutter development course covering widgets, state management, and app deployment.',
-        instructor: 'John Smith',
-        category: 'Mobile Development',
-        price: 299.99,
-        duration: 40,
-        level: 'Intermediate',
-        imageUrl: 'https://via.placeholder.com/300x200/9C27B0/FFFFFF?text=Flutter',
-        startDate: now.add(const Duration(days: 7)),
-        endDate: now.add(const Duration(days: 37)),
-        maxStudents: 50,
-        enrolledStudents: ['user1', 'user2', 'user3', 'user4', 'user5'],
-        tags: ['Flutter', 'Mobile', 'Dart', 'Cross-platform'],
-        isActive: true,
-        createdAt: now.subtract(const Duration(days: 10)),
-        updatedAt: now.subtract(const Duration(days: 2)),
-      ),
-      Course(
-        id: '2',
-        title: 'React Native Fundamentals',
-        description: 'Learn React Native from scratch and build amazing mobile applications.',
-        instructor: 'Sarah Johnson',
-        category: 'Mobile Development',
-        price: 249.99,
-        duration: 35,
-        level: 'Beginner',
-        imageUrl: 'https://via.placeholder.com/300x200/2196F3/FFFFFF?text=React+Native',
-        startDate: now.add(const Duration(days: 14)),
-        endDate: now.add(const Duration(days: 49)),
-        maxStudents: 40,
-        enrolledStudents: ['user6', 'user7', 'user8'],
-        tags: ['React Native', 'JavaScript', 'Mobile'],
-        isActive: true,
-        createdAt: now.subtract(const Duration(days: 15)),
-        updatedAt: now.subtract(const Duration(days: 5)),
-      ),
-      Course(
-        id: '3',
-        title: 'Python for Data Science',
-        description: 'Master Python programming for data analysis, machine learning, and visualization.',
-        instructor: 'Dr. Michael Brown',
-        category: 'Data Science',
-        price: 399.99,
-        duration: 60,
-        level: 'Advanced',
-        imageUrl: 'https://via.placeholder.com/300x200/4CAF50/FFFFFF?text=Python',
-        startDate: now.add(const Duration(days: 21)),
-        endDate: now.add(const Duration(days: 81)),
-        maxStudents: 30,
-        enrolledStudents: ['user9', 'user10', 'user11', 'user12'],
-        tags: ['Python', 'Data Science', 'Machine Learning'],
-        isActive: true,
-        createdAt: now.subtract(const Duration(days: 20)),
-        updatedAt: now.subtract(const Duration(days: 1)),
-      ),
-      Course(
-        id: '4',
-        title: 'Web Development Bootcamp',
-        description: 'Full-stack web development using HTML, CSS, JavaScript, and Node.js.',
-        instructor: 'Emily Davis',
-        category: 'Web Development',
-        price: 199.99,
-        duration: 50,
-        level: 'Beginner',
-        imageUrl: 'https://via.placeholder.com/300x200/FF9800/FFFFFF?text=Web+Dev',
-        startDate: now.add(const Duration(days: 5)),
-        endDate: now.add(const Duration(days: 55)),
-        maxStudents: 60,
-        enrolledStudents: ['user13', 'user14', 'user15', 'user16', 'user17', 'user18'],
-        tags: ['HTML', 'CSS', 'JavaScript', 'Node.js'],
-        isActive: true,
-        createdAt: now.subtract(const Duration(days: 25)),
-        updatedAt: now.subtract(const Duration(days: 3)),
-      ),
-      Course(
-        id: '5',
-        title: 'UI/UX Design Principles',
-        description: 'Learn design thinking, user research, and create stunning user interfaces.',
-        instructor: 'Alex Wilson',
-        category: 'Design',
-        price: 179.99,
-        duration: 25,
-        level: 'Intermediate',
-        imageUrl: 'https://via.placeholder.com/300x200/E91E63/FFFFFF?text=UI%2FUX',
-        startDate: now.add(const Duration(days: 10)),
-        endDate: now.add(const Duration(days: 35)),
-        maxStudents: 35,
-        enrolledStudents: ['user19', 'user20'],
-        tags: ['UI', 'UX', 'Design', 'Figma'],
-        isActive: false,
-        createdAt: now.subtract(const Duration(days: 30)),
-        updatedAt: now.subtract(const Duration(days: 7)),
-      ),
-    ];
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'url': url,
+      'durationSeconds': durationSeconds,
+      'order': order,
+    };
+  }
+
+  String get formattedDuration {
+    final hours = durationSeconds ~/ 3600;
+    final minutes = (durationSeconds % 3600) ~/ 60;
+    final seconds = durationSeconds % 60;
+    
+    if (hours > 0) {
+      return '${hours}h ${minutes}m ${seconds}s';
+    } else if (minutes > 0) {
+      return '${minutes}m ${seconds}s';
+    } else {
+      return '${seconds}s';
+    }
+  }
+}
+
+enum CourseLevel {
+  beginner,
+  intermediate,
+  advanced;
+
+  String get displayName {
+    switch (this) {
+      case CourseLevel.beginner:
+        return 'Beginner';
+      case CourseLevel.intermediate:
+        return 'Intermediate';
+      case CourseLevel.advanced:
+        return 'Advanced';
+    }
   }
 }

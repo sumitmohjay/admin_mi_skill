@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 
 class CustomNavbar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -119,11 +120,30 @@ class CustomNavbar extends StatelessWidget implements PreferredSizeWidget {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Logged out successfully')),
-              );
+              try {
+                // Use the same centralized logout used elsewhere
+                // ignore: use_build_context_synchronously
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                final navigator = Navigator.of(context);
+                // Call API logout which also clears local storage
+                await ApiService.adminLogout();
+                scaffoldMessenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Logged out successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+                navigator.pushNamedAndRemoveUntil('/login', (route) => false);
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error during logout: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,

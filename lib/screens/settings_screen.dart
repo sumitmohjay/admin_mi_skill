@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import '../services/api_service.dart';
+import '../services/ui_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -8,12 +11,41 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _notificationsEnabled = true;
-  bool _darkModeEnabled = false;
-  bool _biometricEnabled = false;
-  bool _autoBackup = true;
-  String _selectedLanguage = 'English';
-  String _selectedTheme = 'Purple';
+  final bool _notificationsEnabled = true;
+  final bool _darkModeEnabled = false;
+  final bool _biometricEnabled = false;
+  final bool _autoBackup = true;
+  final String _selectedLanguage = 'English';
+  final String _selectedTheme = 'Purple';
+  
+  Map<String, dynamic>? _profileData;
+  bool _isLoadingProfile = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final result = await ApiService.getAdminProfile();
+      if (result['success'] == true) {
+        setState(() {
+          _profileData = result['data'];
+          _isLoadingProfile = false;
+        });
+      } else {
+        setState(() {
+          _isLoadingProfile = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingProfile = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,6 +115,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildProfileSection() {
+    if (_isLoadingProfile) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF9C27B0)),
+          ),
+        ),
+      );
+    }
+
+    final name = _profileData?['name'] ?? 'Admin User';
+    final email = _profileData?['email'] ?? 'admin@example.com';
+    final phoneNumber = _profileData?['phoneNumber'] ?? '';
+    final avatar = _profileData?['avatar'];
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -109,10 +168,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               borderRadius: BorderRadius.circular(35),
             ),
-            child: const Icon(
-              Icons.admin_panel_settings,
-              color: Colors.white,
-              size: 35,
+            child: Stack(
+              children: [
+                avatar != null 
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(35),
+                      child: Image.network(
+                        avatar,
+                        width: 70,
+                        height: 70,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => const Icon(
+                          Icons.admin_panel_settings,
+                          color: Colors.white,
+                          size: 35,
+                        ),
+                      ),
+                    )
+                  : const Icon(
+                      Icons.admin_panel_settings,
+                      color: Colors.white,
+                      size: 35,
+                    ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: GestureDetector(
+                    onTap: _showImagePickerDialog,
+                    child: Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF9C27B0),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt,
+                        color: Colors.white,
+                        size: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 16),
@@ -120,22 +219,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Admin User',
-                  style: TextStyle(
+                Text(
+                  name,
+                  style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'admin@example.com',
-                  style: TextStyle(
+                Text(
+                  email,
+                  style: const TextStyle(
                     fontSize: 14,
                     color: Colors.grey,
                   ),
                 ),
+                if (phoneNumber.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    phoneNumber,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -235,7 +344,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       trailing: Switch(
         value: value,
         onChanged: onChanged,
-        activeColor: const Color(0xFF9C27B0),
+        activeThumbColor: const Color(0xFF9C27B0),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     );
@@ -378,99 +487,248 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // Dialog methods
   void _showEditProfileDialog() {
+    final nameController = TextEditingController(text: _profileData?['name'] ?? '');
+    final emailController = TextEditingController(text: _profileData?['email'] ?? '');
+    final bioController = TextEditingController(text: _profileData?['bio'] ?? '');
+    final formKey = GlobalKey<FormState>();
+    bool isLoading = false;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Profile'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              decoration: InputDecoration(
-                labelText: 'Name',
-                border: OutlineInputBorder(),
-              ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Edit Profile'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Name',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your name';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: emailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.email_outlined),
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your email';
+                    }
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                      return 'Please enter a valid email';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: bioController,
+                  decoration: const InputDecoration(
+                    labelText: 'Bio (Optional)',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.info_outline),
+                  ),
+                  maxLines: 3,
+                ),
+              ],
             ),
-            SizedBox(height: 16),
-            TextField(
-              decoration: InputDecoration(
-                labelText: 'Email',
-                border: OutlineInputBorder(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isLoading ? null : () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isLoading ? null : () async {
+                if (formKey.currentState!.validate()) {
+                  setState(() {
+                    isLoading = true;
+                  });
+
+                  try {
+                    final result = await ApiService.updateAdminProfile(
+                      name: nameController.text,
+                      email: emailController.text,
+                      bio: bioController.text.isEmpty ? null : bioController.text,
+                    );
+
+                    if (result['success'] == true) {
+                      Navigator.pop(context);
+                      UiService.showSuccess('Profile updated successfully');
+                      // Reload profile data
+                      _loadProfile();
+                    } else {
+                      UiService.showError(result['message'] ?? 'Failed to update profile');
+                    }
+                  } catch (e) {
+                    UiService.showError('An error occurred: $e');
+                  } finally {
+                    setState(() {
+                      isLoading = false;
+                    });
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF9C27B0),
+                foregroundColor: Colors.white,
               ),
+              child: isLoading 
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Text('Save'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showSuccessSnackBar('Profile updated successfully');
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF9C27B0),
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Save'),
-          ),
-        ],
       ),
     );
   }
 
   void _showChangePasswordDialog() {
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isLoading = false;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Change Password'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'Current Password',
-                border: OutlineInputBorder(),
-              ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Change Password'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: currentPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Current Password',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your current password';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: newPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'New Password',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.lock),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter a new password';
+                    }
+                    if (value.length < 6) {
+                      return 'Password must be at least 6 characters';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: confirmPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Confirm New Password',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.lock_reset),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please confirm your new password';
+                    }
+                    if (value != newPasswordController.text) {
+                      return 'Passwords do not match';
+                    }
+                    return null;
+                  },
+                ),
+              ],
             ),
-            SizedBox(height: 16),
-            TextField(
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'New Password',
-                border: OutlineInputBorder(),
-              ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isLoading ? null : () => Navigator.pop(context),
+              child: const Text('Cancel'),
             ),
-            SizedBox(height: 16),
-            TextField(
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'Confirm New Password',
-                border: OutlineInputBorder(),
+            ElevatedButton(
+              onPressed: isLoading ? null : () async {
+                if (formKey.currentState!.validate()) {
+                  setState(() {
+                    isLoading = true;
+                  });
+
+                  try {
+                    final result = await ApiService.updatePassword(
+                      currentPassword: currentPasswordController.text,
+                      newPassword: newPasswordController.text,
+                    );
+
+                    if (result['success'] == true) {
+                      Navigator.pop(context);
+                      UiService.showSuccess('Password changed successfully');
+                    } else {
+                      UiService.showError(result['message'] ?? 'Failed to change password');
+                    }
+                  } catch (e) {
+                    UiService.showError('An error occurred: $e');
+                  } finally {
+                    setState(() {
+                      isLoading = false;
+                    });
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF9C27B0),
+                foregroundColor: Colors.white,
               ),
+              child: isLoading 
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Text('Change'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showSuccessSnackBar('Password changed successfully');
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF9C27B0),
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Change'),
-          ),
-        ],
       ),
     );
   }
@@ -489,7 +747,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _showSuccessSnackBar('Two-factor authentication enabled');
+              UiService.showSuccess('Two-factor authentication enabled');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF9C27B0),
@@ -503,7 +761,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showPrivacySettings() {
-    _showSuccessSnackBar('Privacy settings opened');
+    UiService.showInfo('Privacy settings opened');
   }
 
   void _showStorageInfo() {
@@ -532,7 +790,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _showSuccessSnackBar('Cache cleared');
+              UiService.showSuccess('Cache cleared');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF9C27B0),
@@ -559,7 +817,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _showSuccessSnackBar('Data export started');
+              UiService.showSuccess('Data export started');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF9C27B0),
@@ -596,7 +854,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _showSuccessSnackBar('Opening support chat...');
+              UiService.showInfo('Opening support chat...');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF9C27B0),
@@ -629,7 +887,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _showSuccessSnackBar('Feedback sent successfully');
+              UiService.showSuccess('Feedback sent successfully');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF9C27B0),
@@ -671,42 +929,156 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showLogoutDialog() {
+    bool isLoading = false;
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Logout'),
+          content: const Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: isLoading ? null : () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isLoading ? null : () async {
+                setState(() {
+                  isLoading = true;
+                });
+
+                try {
+                  final result = await ApiService.adminLogout();
+                  
+                  Navigator.pop(context);
+                  
+                  if (result['success'] == true) {
+                    UiService.showSuccess('Logged out successfully');
+                  } else {
+                    UiService.showInfo(result['message'] ?? 'Logout completed');
+                  }
+                  
+                  // Navigate to login screen
+                  Navigator.pushNamedAndRemoveUntil(
+                    context, 
+                    '/login', 
+                    (route) => false,
+                  );
+                } catch (e) {
+                  Navigator.pop(context);
+                  UiService.showError('Error during logout: $e');
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: isLoading 
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Text('Logout'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showImagePickerDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
+        title: const Text('Update Profile Picture'),
+        content: const Text('Choose an option to update your profile picture'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
+          TextButton(
             onPressed: () {
               Navigator.pop(context);
-              _showSuccessSnackBar('Logged out successfully');
+              _pickImageFromGallery();
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Logout'),
+            child: const Text('Gallery'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _pickImageFromCamera();
+            },
+            child: const Text('Camera'),
           ),
         ],
       ),
     );
   }
 
-  void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: const Color(0xFF9C27B0),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ),
-    );
+  Future<void> _pickImageFromGallery() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    
+    if (image != null) {
+      await _uploadProfileImage(image.path);
+    }
   }
+
+  Future<void> _pickImageFromCamera() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.camera);
+    
+    if (image != null) {
+      await _uploadProfileImage(image.path);
+    }
+  }
+
+  Future<void> _uploadProfileImage(String imagePath) async {
+    try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: SizedBox(
+            width: 200,
+            child: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 16),
+                Expanded(child: Text('Uploading image...')),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final result = await ApiService.uploadProfileImage(imagePath);
+      
+      // Close loading dialog
+      Navigator.pop(context);
+
+      if (result['success'] == true) {
+        UiService.showSuccess('Profile picture updated successfully');
+        // Reload profile to get updated image
+        _loadProfile();
+      } else {
+        UiService.showError(result['message'] ?? 'Failed to upload image');
+      }
+    } catch (e) {
+      // Close loading dialog if still open
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+      UiService.showError('An error occurred: $e');
+    }
+  }
+
+  // SnackBars centralized via UiService
 }

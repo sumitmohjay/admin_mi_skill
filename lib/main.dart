@@ -1,13 +1,17 @@
-import 'package:admin_mi/screens/group/group_screen.dart';
 import 'package:flutter/material.dart';
+import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/user/user_screen.dart';
 import 'screens/event_management/event_management_screen.dart';
 import 'screens/instructor_management/instructor_management_screen.dart';
 import 'screens/course_management/course_management_screen.dart';
+import 'screens/group/group_screen.dart';
 import 'screens/settings_screen.dart';
 import 'widgets/custom_drawer.dart';
 import 'widgets/custom_navbar.dart';
+import 'widgets/state_views.dart';
+import 'services/api_service.dart';
+import 'services/navigation_service.dart';
 
 void main() {
   runApp(const MyApp());
@@ -21,6 +25,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Admin MI',
       debugShowCheckedModeBanner: false,
+      navigatorKey: NavigationService.navigatorKey,
       theme: ThemeData(
         primarySwatch: Colors.purple,
         primaryColor: const Color(0xFF9C27B0),
@@ -35,8 +40,49 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const MainScreen(),
+      home: const AuthWrapper(),
+      routes: {
+        '/login': (context) => const LoginScreen(),
+        '/main': (context) => const MainScreen(),
+      },
     );
+  }
+}
+
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  bool _isLoading = true;
+  bool _isLoggedIn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    final isLoggedIn = await ApiService.isLoggedIn();
+    setState(() {
+      _isLoggedIn = isLoggedIn;
+      _isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: LoadingView(message: 'Checking session...'),
+      );
+    }
+
+    return _isLoggedIn ? const MainScreen() : const LoginScreen();
   }
 }
 

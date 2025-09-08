@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class Event {
-  final int id;
+  final String id;
   final String title;
   final String description;
   final String venue;
@@ -16,6 +16,8 @@ class Event {
   final EventCategory category;
   final List<String> resources;
   final String? imageUrl;
+  final List<String> images;
+  final List<String> videos;
   final DateTime createdAt;
   final DateTime updatedAt;
   final int currentAttendees;
@@ -36,13 +38,15 @@ class Event {
     required this.category,
     required this.resources,
     this.imageUrl,
+    this.images = const [],
+    this.videos = const [],
     required this.createdAt,
     required this.updatedAt,
     this.currentAttendees = 0,
   });
 
   Event copyWith({
-    int? id,
+    String? id,
     String? title,
     String? description,
     String? venue,
@@ -57,6 +61,8 @@ class Event {
     EventCategory? category,
     List<String>? resources,
     String? imageUrl,
+    List<String>? images,
+    List<String>? videos,
     DateTime? createdAt,
     DateTime? updatedAt,
     int? currentAttendees,
@@ -77,6 +83,8 @@ class Event {
       category: category ?? this.category,
       resources: resources ?? this.resources,
       imageUrl: imageUrl ?? this.imageUrl,
+      images: images ?? this.images,
+      videos: videos ?? this.videos,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       currentAttendees: currentAttendees ?? this.currentAttendees,
@@ -100,6 +108,8 @@ class Event {
       'category': category.name,
       'resources': resources,
       'imageUrl': imageUrl,
+      'images': images,
+      'videos': videos,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'currentAttendees': currentAttendees,
@@ -123,10 +133,60 @@ class Event {
       category: EventCategory.values.firstWhere((e) => e.name == json['category']),
       resources: List<String>.from(json['resources'] ?? []),
       imageUrl: json['imageUrl'],
+      images: _parseImageUrls(json['images']),
+      videos: _parseVideoUrls(json['videos']),
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: DateTime.parse(json['updatedAt']),
       currentAttendees: json['currentAttendees'] ?? 0,
     );
+  }
+
+  // Helper method to parse image URLs from backend response
+  static List<String> _parseImageUrls(dynamic imagesData) {
+    if (imagesData == null) return [];
+    
+    List<String> imageUrls = [];
+    
+    if (imagesData is List) {
+      for (var item in imagesData) {
+        if (item is String) {
+          // Parse the stringified object to extract URL
+          String imageString = item;
+          RegExp urlRegex = RegExp(r'url:\s*([^,}]+)');
+          Match? match = urlRegex.firstMatch(imageString);
+          if (match != null) {
+            String url = match.group(1)!.trim();
+            imageUrls.add(url);
+          }
+        }
+      }
+    }
+    
+    return imageUrls;
+  }
+
+  // Helper method to parse video URLs from backend response
+  static List<String> _parseVideoUrls(dynamic videosData) {
+    if (videosData == null) return [];
+    
+    List<String> videoUrls = [];
+    
+    if (videosData is List) {
+      for (var item in videosData) {
+        if (item is String) {
+          // Parse the stringified object to extract URL
+          String videoString = item;
+          RegExp urlRegex = RegExp(r'url:\s*([^,}]+)');
+          Match? match = urlRegex.firstMatch(videoString);
+          if (match != null) {
+            String url = match.group(1)!.trim();
+            videoUrls.add(url);
+          }
+        }
+      }
+    }
+    
+    return videoUrls;
   }
 }
 

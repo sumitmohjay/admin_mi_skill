@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../services/api_service.dart';
 import '../../models/event.dart';
 import 'add_edit_event_screen.dart';
+import 'event_details_screen.dart';
 
 class EventManagementScreen extends StatefulWidget {
   const EventManagementScreen({super.key});
@@ -16,81 +18,20 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
   EventCategory? _selectedCategoryFilter;
   EventMode? _selectedModeFilter;
 
-  // Static data - will be replaced with API calls later
-  List<Event> _events = [
-    Event(
-      id: 1,
-      title: 'Flutter Workshop: Building Beautiful UIs',
-      description: 'Learn advanced Flutter UI techniques and best practices for creating stunning mobile applications.',
-      venue: 'Tech Hub Conference Room A',
-      dateTime: DateTime.now().add(const Duration(days: 7)),
-      maxAttendees: 50,
-      price: 299.99,
-      contactEmail: 'events@techhub.com',
-      contactPhone: '+1-555-0123',
-      tags: ['Flutter', 'Mobile Development', 'UI/UX'],
-      mode: EventMode.hybrid,
-      category: EventCategory.workshop,
-      resources: ['Presentation Slides', 'Code Examples', 'Certificate'],
-      imageUrl: 'https://via.placeholder.com/300x200?text=Flutter+Workshop',
-      createdAt: DateTime.now().subtract(const Duration(days: 5)),
-      updatedAt: DateTime.now().subtract(const Duration(days: 1)),
-      currentAttendees: 32,
-    ),
-    Event(
-      id: 2,
-      title: 'AI & Machine Learning Seminar',
-      description: 'Explore the latest trends in artificial intelligence and machine learning technologies.',
-      venue: 'Innovation Center Auditorium',
-      dateTime: DateTime.now().add(const Duration(days: 14)),
-      maxAttendees: 100,
-      price: 199.99,
-      contactEmail: 'ai@innovationcenter.com',
-      contactPhone: '+1-555-0456',
-      tags: ['AI', 'Machine Learning', 'Technology'],
-      mode: EventMode.offline,
-      category: EventCategory.seminar,
-      resources: ['Research Papers', 'Demo Videos'],
-      createdAt: DateTime.now().subtract(const Duration(days: 10)),
-      updatedAt: DateTime.now().subtract(const Duration(days: 2)),
-      currentAttendees: 78,
-    ),
-    Event(
-      id: 3,
-      title: 'Remote Team Management Training',
-      description: 'Best practices for managing distributed teams and remote collaboration.',
-      venue: 'Online Platform',
-      dateTime: DateTime.now().add(const Duration(days: 3)),
-      maxAttendees: 30,
-      price: 149.99,
-      contactEmail: 'training@remotework.com',
-      tags: ['Management', 'Remote Work', 'Leadership'],
-      mode: EventMode.online,
-      category: EventCategory.training,
-      resources: ['Training Manual', 'Templates', 'Tools List'],
-      createdAt: DateTime.now().subtract(const Duration(days: 15)),
-      updatedAt: DateTime.now().subtract(const Duration(hours: 6)),
-      currentAttendees: 25,
-    ),
-    Event(
-      id: 4,
-      title: 'Tech Networking Mixer',
-      description: 'Connect with fellow tech professionals and expand your network.',
-      venue: 'Downtown Business Center',
-      dateTime: DateTime.now().add(const Duration(days: 21)),
-      maxAttendees: 80,
-      price: 25.00,
-      contactEmail: 'mixer@technetwork.com',
-      contactPhone: '+1-555-0789',
-      tags: ['Networking', 'Technology', 'Career'],
-      mode: EventMode.offline,
-      category: EventCategory.networking,
-      resources: ['Name Tags', 'Business Card Holder'],
-      createdAt: DateTime.now().subtract(const Duration(days: 3)),
-      updatedAt: DateTime.now().subtract(const Duration(hours: 12)),
-      currentAttendees: 45,
-    ),
-  ];
+  // Event stats from API
+  bool _isLoadingStats = false;
+  Map<String, dynamic>? _eventStats; // { totalEvents, upcomingEvents, totalAttendance, totalRevenue }
+
+  // Events loaded from API
+  final List<Event> _events = [];
+  bool _isLoadingEvents = false;
+
+  // Pagination
+  final ScrollController _scrollController = ScrollController();
+  int _page = 1;
+  final int _limit = 10;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
 
   List<Event> get filteredEvents {
     List<Event> filtered = _events;
@@ -116,6 +57,194 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
     }
 
     return filtered;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchEventStats();
+    _fetchEvents(reset: true);
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchEventStats() async {
+    print('DEBUG: _fetchEventStats called');
+    setState(() {
+      _isLoadingStats = true;
+    });
+    print('DEBUG: Calling getEventStats API...');
+    final result = await ApiService.getEventStats();
+    print('DEBUG: getEventStats result: $result');
+    if (mounted) {
+      setState(() {
+        _isLoadingStats = false;
+        if (result['success'] == true && result['data'] is Map<String, dynamic>) {
+          _eventStats = result['data'] as Map<String, dynamic>;
+          print('DEBUG: Event stats updated: $_eventStats');
+        } else {
+          _eventStats = null; // keep using static fallback
+          print('DEBUG: Event stats failed, using fallback');
+        }
+      });
+    } else {
+      print('DEBUG: Widget not mounted, skipping stats update');
+    }
+  }
+
+  void _onScroll() {
+    if (!_hasMore || _isLoadingMore || _isLoadingEvents) return;
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      _fetchEvents(reset: false);
+    }
+  }
+
+  Future<void> _fetchEvents({required bool reset}) async {
+    print('DEBUG: _fetchEvents called with reset=$reset');
+    if (reset) {
+      print('DEBUG: Resetting events list and pagination');
+      setState(() {
+        _isLoadingEvents = true;
+        _page = 1;
+        _hasMore = true;
+        _events.clear();
+      });
+    } else {
+      print('DEBUG: Loading more events (pagination)');
+      setState(() {
+        _isLoadingMore = true;
+      });
+    }
+
+    final result = await ApiService.getAllEvents(page: _page, limit: _limit, search: _searchQuery.isEmpty ? null : _searchQuery);
+    print('DEBUG: getAllEvents result: $result');
+    if (!mounted) return;
+    if (result['success'] == true && result['data'] != null) {
+      // Accept either { data: { events: [...] }} or { data: [...] }
+      List<dynamic> eventsJson = [];
+      final data = result['data'];
+      print('DEBUG: data type: ${data.runtimeType}, data: $data');
+      if (data is Map<String, dynamic> && data['events'] is List) {
+        eventsJson = List<dynamic>.from(data['events'] as List);
+        print('DEBUG: Found events in data.events: ${eventsJson.length}');
+      } else if (data is List) {
+        eventsJson = List<dynamic>.from(data);
+        print('DEBUG: Found events in data directly: ${eventsJson.length}');
+      } else {
+        print('DEBUG: No events found in data structure');
+      }
+      final List<Event> mapped = [];
+      for (int i = 0; i < eventsJson.length; i++) {
+        final e = eventsJson[i] as Map<String, dynamic>;
+        // Combine startDate and startTime into one DateTime
+        DateTime dateTime;
+        try {
+          final DateTime base = DateTime.parse(e['startDate']);
+          final String? startTime = e['startTime'];
+          if (startTime != null && startTime.isNotEmpty) {
+            final parts = startTime.split(':');
+            final int hour = int.tryParse(parts[0]) ?? 0;
+            final int minute = int.tryParse(parts[1]) ?? 0;
+            dateTime = DateTime(base.year, base.month, base.day, hour, minute);
+          } else {
+            dateTime = base;
+          }
+        } catch (_) {
+          dateTime = DateTime.now();
+        }
+
+        // Map category and mode
+        EventCategory category;
+        switch ((e['category'] ?? '').toString()) {
+          case 'workshop': category = EventCategory.workshop; break;
+          case 'seminar': category = EventCategory.seminar; break;
+          case 'conference': category = EventCategory.conference; break;
+          case 'training': category = EventCategory.training; break;
+          case 'webinar': category = EventCategory.webinar; break;
+          case 'meeting': category = EventCategory.meeting; break;
+          case 'networking': category = EventCategory.networking; break;
+          default: category = EventCategory.other; break;
+        }
+
+        EventMode mode;
+        switch ((e['eventType'] ?? '').toString()) {
+          case 'online': mode = EventMode.online; break;
+          case 'offline': mode = EventMode.offline; break;
+          case 'hybrid': mode = EventMode.hybrid; break;
+          default: mode = EventMode.offline; break;
+        }
+
+        final int currentAttendees = (e['enrollments'] is List) ? (e['enrollments'] as List).length : 0;
+
+        final backendId = (e['_id'] ?? e['id'] ?? '').toString();
+        mapped.add(
+          Event(
+            id: backendId, // Use backend ID directly as the event ID
+            title: (e['title'] ?? '').toString(),
+            description: (e['description'] ?? '').toString(),
+            venue: (e['location'] ?? '').toString(),
+            dateTime: dateTime,
+            maxAttendees: (e['maxParticipants'] ?? 0) is int ? e['maxParticipants'] as int : int.tryParse((e['maxParticipants'] ?? '0').toString()) ?? 0,
+            price: (e['price'] == null) ? null : (e['price'] as num).toDouble(),
+            contactEmail: null,
+            contactPhone: null,
+            meetingLink: null,
+            tags: (e['tags'] is List) ? List<String>.from(e['tags']) : <String>[],
+            mode: mode,
+            category: category,
+            resources: const <String>[],
+            imageUrl: (e['images'] is List && (e['images'] as List).isNotEmpty) ? (e['images'] as List).first.toString() : null,
+            createdAt: DateTime.tryParse((e['createdAt'] ?? '').toString()) ?? DateTime.now(),
+            updatedAt: DateTime.tryParse((e['updatedAt'] ?? '').toString()) ?? DateTime.now(),
+            currentAttendees: currentAttendees,
+          ),
+        );
+      }
+      print('DEBUG: Mapped ${mapped.length} events');
+
+      if (mounted) {
+        print('DEBUG: About to update state with ${mapped.length} events');
+        print('DEBUG: Current events count before update: ${_events.length}');
+        setState(() {
+          if (reset) {
+            print('DEBUG: Clearing events list (reset=true)');
+            _events.clear();
+          }
+          _events.addAll(mapped);
+          _isLoadingEvents = false;
+          _isLoadingMore = false;
+          // hasMore: if returned less than limit, no more pages
+          final int returned = eventsJson.length;
+          if (returned < _limit) {
+            _hasMore = false;
+          } else {
+            _page += 1;
+            _hasMore = true;
+          }
+        });
+        print('DEBUG: State updated. New events count: ${_events.length}');
+      } else {
+        print('DEBUG: Widget not mounted, skipping state update');
+      }
+    } else {
+      print('DEBUG: API call failed: ${result['message']}');
+      if (mounted) {
+        setState(() {
+          _isLoadingEvents = false;
+          _isLoadingMore = false;
+        });
+        if (result['message'] != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['message'].toString())),
+          );
+        }
+      }
+    }
   }
 
   @override
@@ -176,7 +305,7 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
                   Expanded(
                     child: _buildStatCard(
                       'Total Events',
-                      '${_events.length}',
+                      '${_eventStats?['totalEvents'] ?? _events.length}',
                       Icons.event,
                       const Color(0xFF9C27B0),
                     ),
@@ -185,7 +314,7 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
                   Expanded(
                     child: _buildStatCard(
                       'Upcoming',
-                      '${_events.where((e) => e.dateTime.isAfter(DateTime.now())).length}',
+                      '${_eventStats?['upcomingEvents'] ?? _events.where((e) => e.dateTime.isAfter(DateTime.now())).length}',
                       Icons.schedule,
                       const Color(0xFF4CAF50),
                     ),
@@ -198,7 +327,7 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
                   Expanded(
                     child: _buildStatCard(
                       'Total Attendees',
-                      '${_events.fold(0, (sum, event) => sum + event.currentAttendees)}',
+                      '${_eventStats?['totalAttendance'] ?? _events.fold(0, (sum, event) => sum + event.currentAttendees)}',
                       Icons.people,
                       const Color(0xFF2196F3),
                     ),
@@ -207,7 +336,9 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
                   Expanded(
                     child: _buildStatCard(
                       'Revenue',
-                      '\$${_events.fold(0.0, (sum, event) => sum + ((event.price ?? 0) * event.currentAttendees)).toStringAsFixed(0)}',
+                      _eventStats != null
+                          ? '₹${_eventStats!['totalRevenue']}'
+                          : '₹${_events.fold(0.0, (sum, event) => sum + ((event.price ?? 0) * event.currentAttendees)).toStringAsFixed(0)}',
                       Icons.attach_money,
                       const Color(0xFFFF9800),
                     ),
@@ -309,15 +440,32 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
                   ),
                   // Events List
                   Expanded(
-                    child: filteredEvents.isEmpty
-                        ? _buildEmptyState()
-                        : ListView.builder(
-                            itemCount: filteredEvents.length,
-                            itemBuilder: (context, index) {
-                              final event = filteredEvents[index];
-                              return _buildEventRow(event);
-                            },
-                          ),
+                    child: _isLoadingEvents
+                        ? const Center(child: CircularProgressIndicator())
+                        : filteredEvents.isEmpty
+                            ? _buildEmptyState()
+                            : RefreshIndicator(
+                                onRefresh: () async {
+                                  await Future.wait([
+                                    _fetchEvents(reset: true),
+                                    _fetchEventStats(),
+                                  ]);
+                                },
+                                child: ListView.builder(
+                                  controller: _scrollController,
+                                  itemCount: filteredEvents.length + (_isLoadingMore ? 1 : 0),
+                                  itemBuilder: (context, index) {
+                                    if (_isLoadingMore && index == filteredEvents.length) {
+                                      return const Padding(
+                                        padding: EdgeInsets.symmetric(vertical: 16),
+                                        child: Center(child: CircularProgressIndicator()),
+                                      );
+                                    }
+                                    final event = filteredEvents[index];
+                                    return _buildEventRow(event);
+                                  },
+                                ),
+                              ),
                   ),
                 ],
               ),
@@ -444,7 +592,7 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
                           borderRadius: BorderRadius.circular(3),
                         ),
                         child: Text(
-                          '\$${event.price!.toStringAsFixed(0)}',
+                          '₹${event.price!.toStringAsFixed(0)}',
                           style: const TextStyle(
                             color: Color(0xFFFF9800),
                             fontSize: 8,
@@ -652,23 +800,25 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
     );
   }
 
-  void _navigateToAddEvent() {
-    Navigator.push(
+  void _navigateToAddEvent() async {
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => AddEditEventScreen(
           onSave: (event) {
-            setState(() {
-              _events.add(event.copyWith(
-                id: _events.length + 1,
-                createdAt: DateTime.now(),
-                updatedAt: DateTime.now(),
-              ));
-            });
+            // This will be called when the form is saved
           },
         ),
       ),
     );
+    
+    // Refresh data when returning from add/edit screen
+    if (result == true || result == 'success') {
+      await Future.wait([
+        _fetchEvents(reset: true),
+        _fetchEventStats(),
+      ]);
+    }
   }
 
   void _handleEventAction(String action, Event event) {
@@ -680,28 +830,36 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
         _showDeleteDialog(event);
         break;
       case 'view':
-        _showEventDetails(event);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EventDetailsScreen(eventId: event.id),
+          ),
+        );
         break;
     }
   }
 
-  void _navigateToEditEvent(Event event) {
-    Navigator.push(
+  void _navigateToEditEvent(Event event) async {
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => AddEditEventScreen(
           event: event,
           onSave: (updatedEvent) {
-            setState(() {
-              final index = _events.indexWhere((e) => e.id == event.id);
-              if (index != -1) {
-                _events[index] = updatedEvent.copyWith(updatedAt: DateTime.now());
-              }
-            });
+            // This will be called when the form is saved
           },
         ),
       ),
     );
+    
+    // Refresh data when returning from edit screen
+    if (result == true || result == 'success') {
+      await Future.wait([
+        _fetchEvents(reset: true),
+        _fetchEventStats(),
+      ]);
+    }
   }
 
   void _showDeleteDialog(Event event) {
@@ -716,14 +874,62 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _events.removeWhere((e) => e.id == event.id);
-              });
+            onPressed: () async {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Event "${event.title}" deleted successfully')),
-              );
+              
+              print('DEBUG: Starting delete for event ID: ${event.id}');
+              
+              // Show loading state
+              setState(() {
+                _isLoadingEvents = true;
+              });
+              
+              print('DEBUG: Calling deleteEvent API...');
+              final res = await ApiService.deleteEvent(event.id);
+              print('DEBUG: Delete API response: $res');
+              
+              if (mounted) {
+                if (res['success'] == true) {
+                  print('DEBUG: Delete successful, refreshing data...');
+                  
+                  // Refresh both events and stats FIRST
+                  print('DEBUG: Calling _fetchEvents(reset: true)...');
+                  try {
+                    await _fetchEvents(reset: true);
+                    print('DEBUG: _fetchEvents completed successfully');
+                  } catch (e) {
+                    print('DEBUG: _fetchEvents failed: $e');
+                  }
+                  
+                  print('DEBUG: Calling _fetchEventStats()...');
+                  try {
+                    await _fetchEventStats();
+                    print('DEBUG: _fetchEventStats completed successfully');
+                  } catch (e) {
+                    print('DEBUG: _fetchEventStats failed: $e');
+                  }
+                  print('DEBUG: Refresh completed');
+                  
+                  // Show success message AFTER refresh
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Event deleted successfully'), backgroundColor: Colors.green),
+                    );
+                  }
+                } else {
+                  print('DEBUG: Delete failed: ${res['message']}');
+                  setState(() {
+                    _isLoadingEvents = false;
+                  });
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(res['message']?.toString() ?? 'Failed to delete event'), backgroundColor: Colors.red),
+                    );
+                  }
+                }
+              } else {
+                print('DEBUG: Widget not mounted, skipping UI updates');
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
@@ -736,43 +942,6 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
     );
   }
 
-  void _showEventDetails(Event event) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(event.title),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Description: ${event.description}'),
-              const SizedBox(height: 8),
-              Text('Venue: ${event.venue}'),
-              const SizedBox(height: 8),
-              Text('Date: ${DateFormat('MMM dd, yyyy - hh:mm a').format(event.dateTime)}'),
-              const SizedBox(height: 8),
-              Text('Attendees: ${event.currentAttendees}/${event.maxAttendees}'),
-              if (event.price != null) ...[
-                const SizedBox(height: 8),
-                Text('Price: \$${event.price!.toStringAsFixed(2)}'),
-              ],
-              if (event.tags.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text('Tags: ${event.tags.join(', ')}'),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _showCategoryFilter() {
     showDialog(

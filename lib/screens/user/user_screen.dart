@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'user_detail_screen.dart';
+import '../../services/api_service.dart';
 
 class UserScreen extends StatefulWidget {
   const UserScreen({super.key});
@@ -10,253 +11,165 @@ class UserScreen extends StatefulWidget {
 
 class _UserScreenState extends State<UserScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String _searchQuery = '';
+  List<Map<String, dynamic>> _students = [];
+  bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMoreData = true;
+  int _currentPage = 1;
+  final int _limit = 10;
+  Map<String, dynamic> _stats = {
+    'total': 0,
+    'isActive': 0,
+    'isInactive': 0,
+    'recentlyActive': 0,
+  };
 
-  final List<Map<String, dynamic>> _users = [
-    {
-      'id': 1,
-      'name': 'John Doe',
-      'email': 'john.doe@example.com',
-      'role': 'Admin',
-      'status': 'Active',
-      'avatar': 'JD',
-      'joinDate': '2024-01-15',
-      'lastActive': '2 hours ago',
-      'phone': '+1 234-567-8901',
-      'location': 'New York, USA',
-      'totalCourses': 5,
-      'completedCourses': 3,
-      'courses': [
-        {
-          'id': 1,
-          'title': 'Flutter Development Masterclass',
-          'progress': 85,
-          'status': 'In Progress',
-          'enrolledDate': '2024-01-20',
-          'completionDate': null,
-          'rating': null,
-          'feedback': null,
-        },
-        {
-          'id': 2,
-          'title': 'Advanced Dart Programming',
-          'progress': 100,
-          'status': 'Completed',
-          'enrolledDate': '2024-01-25',
-          'completionDate': '2024-02-15',
-          'rating': 5,
-          'feedback': 'Excellent course! Very comprehensive.',
-        },
-        {
-          'id': 3,
-          'title': 'UI/UX Design Fundamentals',
-          'progress': 60,
-          'status': 'In Progress',
-          'enrolledDate': '2024-02-01',
-          'completionDate': null,
-          'rating': null,
-          'feedback': null,
-        },
-      ],
-    },
-    {
-      'id': 2,
-      'name': 'Jane Smith',
-      'email': 'jane.smith@example.com',
-      'role': 'User',
-      'status': 'Active',
-      'avatar': 'JS',
-      'joinDate': '2024-02-20',
-      'lastActive': '1 day ago',
-      'phone': '+1 234-567-8902',
-      'location': 'California, USA',
-      'totalCourses': 3,
-      'completedCourses': 2,
-      'courses': [
-        {
-          'id': 4,
-          'title': 'React Native Development',
-          'progress': 100,
-          'status': 'Completed',
-          'enrolledDate': '2024-02-25',
-          'completionDate': '2024-03-20',
-          'rating': 4,
-          'feedback': 'Great course, learned a lot!',
-        },
-        {
-          'id': 5,
-          'title': 'JavaScript Fundamentals',
-          'progress': 100,
-          'status': 'Completed',
-          'enrolledDate': '2024-02-28',
-          'completionDate': '2024-03-15',
-          'rating': 5,
-          'feedback': 'Perfect for beginners.',
-        },
-        {
-          'id': 6,
-          'title': 'Mobile App Design',
-          'progress': 40,
-          'status': 'In Progress',
-          'enrolledDate': '2024-03-01',
-          'completionDate': null,
-          'rating': null,
-          'feedback': null,
-        },
-      ],
-    },
-    {
-      'id': 3,
-      'name': 'Mike Johnson',
-      'email': 'mike.johnson@example.com',
-      'role': 'Moderator',
-      'status': 'Inactive',
-      'avatar': 'MJ',
-      'joinDate': '2024-01-10',
-      'lastActive': '1 week ago',
-      'phone': '+1 234-567-8903',
-      'location': 'Texas, USA',
-      'totalCourses': 2,
-      'completedCourses': 1,
-      'courses': [
-        {
-          'id': 7,
-          'title': 'Python for Beginners',
-          'progress': 100,
-          'status': 'Completed',
-          'enrolledDate': '2024-01-15',
-          'completionDate': '2024-02-10',
-          'rating': 4,
-          'feedback': 'Good introduction to Python.',
-        },
-        {
-          'id': 8,
-          'title': 'Data Science Basics',
-          'progress': 25,
-          'status': 'Paused',
-          'enrolledDate': '2024-02-15',
-          'completionDate': null,
-          'rating': null,
-          'feedback': null,
-        },
-      ],
-    },
-    {
-      'id': 4,
-      'name': 'Sarah Wilson',
-      'email': 'sarah.wilson@example.com',
-      'role': 'User',
-      'status': 'Active',
-      'avatar': 'SW',
-      'joinDate': '2024-03-05',
-      'lastActive': '5 minutes ago',
-      'phone': '+1 234-567-8904',
-      'location': 'Florida, USA',
-      'totalCourses': 4,
-      'completedCourses': 1,
-      'courses': [
-        {
-          'id': 9,
-          'title': 'Web Development Bootcamp',
-          'progress': 100,
-          'status': 'Completed',
-          'enrolledDate': '2024-03-10',
-          'completionDate': '2024-04-25',
-          'rating': 5,
-          'feedback': 'Amazing course! Highly recommended.',
-        },
-        {
-          'id': 10,
-          'title': 'Node.js Backend Development',
-          'progress': 70,
-          'status': 'In Progress',
-          'enrolledDate': '2024-04-01',
-          'completionDate': null,
-          'rating': null,
-          'feedback': null,
-        },
-      ],
-    },
-    {
-      'id': 5,
-      'name': 'David Brown',
-      'email': 'david.brown@example.com',
-      'role': 'User',
-      'status': 'Inactive',
-      'avatar': 'DB',
-      'joinDate': '2024-03-10',
-      'lastActive': 'Never',
-      'phone': '+1 234-567-8905',
-      'location': 'Washington, USA',
-      'totalCourses': 1,
-      'completedCourses': 0,
-      'courses': [
-        {
-          'id': 11,
-          'title': 'Introduction to Programming',
-          'progress': 10,
-          'status': 'Just Started',
-          'enrolledDate': '2024-03-12',
-          'completionDate': null,
-          'rating': null,
-          'feedback': null,
-        },
-      ],
-    },
-    {
-      'id': 6,
-      'name': 'Emily Johnson',
-      'email': 'emily.johnson@example.com',
-      'role': 'User',
-      'status': 'Inactive',
-      'avatar': 'EJ',
-      'joinDate': '2024-03-15',
-      'lastActive': 'Never',
-      'phone': '+1 234-567-8906',
-      'location': 'California, USA',
-      'totalCourses': 0,
-      'completedCourses': 0,
-      'courses': [],
-    },
-    {
-      'id': 7,
-      'name': 'Robert Davis',
-      'email': 'robert.davis@example.com',
-      'role': 'User',
-      'status': 'Inactive',
-      'avatar': 'RD',
-      'joinDate': '2024-03-18',
-      'lastActive': 'Never',
-      'phone': '+1 234-567-8907',
-      'location': 'Texas, USA',
-      'totalCourses': 0,
-      'completedCourses': 0,
-      'courses': [],
-    },
-    {
-      'id': 8,
-      'name': 'Lisa Anderson',
-      'email': 'lisa.anderson@example.com',
-      'role': 'User',
-      'status': 'Inactive',
-      'avatar': 'LA',
-      'joinDate': '2024-03-20',
-      'lastActive': 'Never',
-      'phone': '+1 234-567-8908',
-      'location': 'Florida, USA',
-      'totalCourses': 0,
-      'completedCourses': 0,
-      'courses': [],
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadStudents();
+    _loadStats();
+    _scrollController.addListener(_scrollListener);
+  }
 
-  List<Map<String, dynamic>> get filteredUsers {
-    var userRoleOnly = _users.where((user) => user['role'] == 'User').toList();
-    if (_searchQuery.isEmpty) return userRoleOnly;
-    return userRoleOnly.where((user) {
-      return user['name'].toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          user['email'].toLowerCase().contains(_searchQuery.toLowerCase());
-    }).toList();
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 100) {
+      if (_hasMoreData && !_isLoadingMore) {
+        print('Triggering infinite scroll - loading more students...');
+        _loadMoreStudents();
+      }
+    }
+  }
+
+  Future<void> _loadStudents({bool isRefresh = false}) async {
+    if (isRefresh) {
+      setState(() {
+        _currentPage = 1;
+        _hasMoreData = true;
+        _students.clear();
+      });
+    }
+    
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final result = await ApiService.getAllStudents(
+        page: _currentPage,
+        limit: _limit,
+        search: _searchQuery.isNotEmpty ? _searchQuery : null,
+      );
+
+      if (result['success'] == true) {
+        final newStudents = List<Map<String, dynamic>>.from(result['data']['students'] ?? []);
+        
+        setState(() {
+          if (isRefresh || _currentPage == 1) {
+            _students = newStudents;
+          } else {
+            _students.addAll(newStudents);
+          }
+          // Show more button if we got a full page of results (indicating more might be available)
+          _hasMoreData = newStudents.length == _limit;
+          _isLoading = false;
+        });
+        
+        // Debug: Print pagination info
+        print('Loaded ${newStudents.length} students, _hasMoreData: $_hasMoreData, _currentPage: $_currentPage');
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+        _showErrorSnackBar(result['message'] ?? 'Failed to load students');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      _showErrorSnackBar('Error loading students: $e');
+    }
+  }
+
+  Future<void> _loadMoreStudents() async {
+    if (_isLoadingMore || !_hasMoreData) {
+      print('Skipping load more - isLoadingMore: $_isLoadingMore, hasMoreData: $_hasMoreData');
+      return;
+    }
+    
+    print('Loading more students - page: ${_currentPage + 1}');
+    setState(() {
+      _isLoadingMore = true;
+      _currentPage++;
+    });
+
+    try {
+      final result = await ApiService.getAllStudents(
+        page: _currentPage,
+        limit: _limit,
+        search: _searchQuery.isNotEmpty ? _searchQuery : null,
+      );
+
+      if (result['success'] == true) {
+        final newStudents = List<Map<String, dynamic>>.from(result['data']['students'] ?? []);
+        
+        print('Loaded ${newStudents.length} more students. Total: ${_students.length + newStudents.length}, hasMoreData: ${newStudents.length == _limit}');
+        
+        setState(() {
+          _students.addAll(newStudents);
+          _hasMoreData = newStudents.length == _limit;
+          _isLoadingMore = false;
+        });
+      } else {
+        setState(() {
+          _currentPage--; // Revert page increment on failure
+          _isLoadingMore = false;
+        });
+        _showErrorSnackBar(result['message'] ?? 'Failed to load more students');
+      }
+    } catch (e) {
+      setState(() {
+        _currentPage--; // Revert page increment on failure
+        _isLoadingMore = false;
+      });
+      _showErrorSnackBar('Error loading more students: $e');
+    }
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      final result = await ApiService.getStudentStats();
+      if (result['success'] == true && result['data'] != null) {
+        setState(() {
+          _stats = result['data'];
+        });
+      }
+    } catch (e) {
+      // Silently handle stats loading error
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  List<Map<String, dynamic>> get filteredStudents {
+    return _students;
   }
 
   @override
@@ -267,81 +180,75 @@ class _UserScreenState extends State<UserScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header Section
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
             children: [
-              Text(
-                'User Management',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Student Management',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Manage and monitor student accounts',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              SizedBox(height: 4),
-              Text(
-                'Manage and monitor user accounts',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
+              ElevatedButton.icon(
+                onPressed: _showCreateStudentDialog,
+                icon: const Icon(Icons.add),
+                label: const Text('Create Student'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF9C27B0),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 24),
 
-          // Search and Filter Section
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
-                    },
-                    decoration: const InputDecoration(
-                      hintText: 'Search users...',
-                      prefixIcon: Icon(Icons.search, color: Colors.grey),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    ),
-                  ),
+          // Search Section
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
                 ),
+              ],
+            ),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
+              decoration: const InputDecoration(
+                hintText: 'Search by name or email...',
+                prefixIcon: Icon(Icons.search, color: Colors.grey),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
-              const SizedBox(width: 12),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: IconButton(
-                  onPressed: () => _showFilterDialog(),
-                  icon: const Icon(Icons.filter_list),
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
+              onSubmitted: (value) {
+                _loadStudents(isRefresh: true);
+              },
+            ),
           ),
           const SizedBox(height: 24),
 
@@ -349,32 +256,88 @@ class _UserScreenState extends State<UserScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildStatCard('Total Users', '${filteredUsers.length}', Icons.people, const Color(0xFF4CAF50)),
+                child: _buildStatCard('Total Students', '${_stats['total'] ?? 0}', Icons.school, const Color(0xFF4CAF50)),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _buildStatCard('Active', '${filteredUsers.where((u) => u['status'] == 'Active').length}', Icons.check_circle, const Color(0xFF9C27B0)),
+                child: _buildStatCard('Active', '${_stats['isActive'] ?? 0}', Icons.check_circle, const Color(0xFF9C27B0)),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _buildStatCard('Inactive', '${filteredUsers.where((u) => u['status'] == 'Inactive').length}', Icons.schedule, const Color(0xFFFF9800)),
+                child: _buildStatCard('Inactive', '${_stats['isInactive'] ?? 0}', Icons.schedule, const Color(0xFFFF9800)),
               ),
             ],
           ),
           const SizedBox(height: 24),
 
-          // Users List
-          Expanded(
-            child: ListView.builder(
-              itemCount: filteredUsers.length,
-              itemBuilder: (context, index) {
-                final user = filteredUsers[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: _buildUserCard(user),
-                );
-              },
+          // Clear Search Button
+          if (_searchQuery.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() {
+                        _searchQuery = '';
+                      });
+                      _loadStudents(isRefresh: true);
+                    },
+                    child: const Text('Clear Search'),
+                  ),
+                ],
+              ),
             ),
+
+          // Students List
+          Expanded(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF9C27B0)),
+                    ),
+                  )
+                : _students.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'No students found',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      )
+                    : Column(
+                        children: [
+                          Expanded(
+                            child: ListView.builder(
+                              controller: _scrollController,
+                              itemCount: _students.length + (_isLoadingMore ? 1 : 0),
+                              itemBuilder: (context, index) {
+                                if (index == _students.length) {
+                                  // Loading indicator at the end for infinite scroll
+                                  return const Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: Center(
+                                      child: CircularProgressIndicator(
+                                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF9C27B0)),
+                                      ),
+                                    ),
+                                  );
+                                }
+                                
+                                final student = _students[index];
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 16),
+                                  child: _buildStudentCard(student),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
           ),
         ],
       ),
@@ -419,9 +382,9 @@ class _UserScreenState extends State<UserScreen> {
     );
   }
 
-  Widget _buildUserCard(Map<String, dynamic> user) {
+  Widget _buildStudentCard(Map<String, dynamic> student) {
     return GestureDetector(
-      onTap: () => _navigateToUserDetail(user),
+      onTap: () => _navigateToStudentDetail(student),
       child: Container(
         width: MediaQuery.of(context).size.width * 0.8,
         decoration: BoxDecoration(
@@ -442,9 +405,9 @@ class _UserScreenState extends State<UserScreen> {
               // Avatar
               CircleAvatar(
                 radius: 30,
-                backgroundColor: _getRoleColor(user['role'] ?? 'User'),
+                backgroundColor: const Color(0xFF9C27B0),
                 child: Text(
-                  user['avatar'] ?? 'U',
+                  _getInitials(student['name'] ?? 'Student'),
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -454,13 +417,13 @@ class _UserScreenState extends State<UserScreen> {
               ),
               const SizedBox(width: 16),
               
-              // User info
+              // Student info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      user['name'] ?? 'Unknown User',
+                      student['name'] ?? 'Unknown Student',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -469,42 +432,44 @@ class _UserScreenState extends State<UserScreen> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      user['email'] ?? 'No email',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
+                    if (student['email'] != null && student['email'].toString().isNotEmpty)
+                      Text(
+                        student['email'],
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
+                        if (student['studentId'] != null && student['studentId'].toString().isNotEmpty)
+                          Expanded(
+                            child: Text(
+                              'ID: ${student['studentId']}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: _getRoleColor(user['role'] ?? 'User').withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
+                            color: (student['isActive'] == true ? Colors.green : Colors.red).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            user['role'] ?? 'User',
+                            student['isActive'] == true ? 'ACTIVE' : 'INACTIVE',
                             style: TextStyle(
-                              color: _getRoleColor(user['role'] ?? 'User'),
-                              fontSize: 12,
+                              color: student['isActive'] == true ? Colors.green : Colors.red,
+                              fontSize: 10,
                               fontWeight: FontWeight.w600,
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            '${user['completedCourses'] ?? 0}/${user['totalCourses'] ?? 0} courses',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w500,
-                            ),
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -513,48 +478,34 @@ class _UserScreenState extends State<UserScreen> {
                 ),
               ),
               
-              // Status, last active, and menu
+              // Phone number and menu
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _getStatusColor(user['status'] ?? 'Inactive').withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          user['status'] ?? 'Inactive',
-                          style: TextStyle(
-                            color: _getStatusColor(user['status'] ?? 'Inactive'),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
                       PopupMenuButton<String>(
                         icon: Icon(
                           Icons.more_vert,
                           size: 20,
                           color: Colors.grey[600],
                         ),
-                        onSelected: (value) => _handleUserAction(value, user),
-                        itemBuilder: (context) => _buildMenuItems(user),
+                        onSelected: (value) => _handleStudentAction(value, student),
+                        itemBuilder: (context) => _buildMenuItems(student),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    user['lastActive'] ?? 'Never',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[500],
+                  if (student['phoneNumber'] != null && student['phoneNumber'].toString().isNotEmpty)
+                    Text(
+                      student['phoneNumber'],
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ],
@@ -564,58 +515,26 @@ class _UserScreenState extends State<UserScreen> {
     );
   }
 
-  Color _getRoleColor(String role) {
-    switch (role) {
-      case 'Admin':
-        return const Color(0xFFF44336);
-      case 'Moderator':
-        return const Color(0xFFFF9800);
-      case 'User':
-        return const Color(0xFF4CAF50);
-      default:
-        return Colors.grey;
+
+
+  String _getInitials(String name) {
+    List<String> names = name.split(' ');
+    String initials = '';
+    for (int i = 0; i < names.length && i < 2; i++) {
+      if (names[i].isNotEmpty) {
+        initials += names[i][0].toUpperCase();
+      }
     }
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Active':
-        return const Color(0xFF4CAF50);
-      case 'Inactive':
-        return const Color(0xFFF44336);
-      case 'Pending':
-        return const Color(0xFFFF9800);
-      default:
-        return Colors.grey;
-    }
+    return initials.isEmpty ? 'S' : initials;
   }
 
 
-  void _showFilterDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Filter Users'),
-        content: const Text('Filter options would be implemented here.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Apply'),
-          ),
-        ],
-      ),
-    );
-  }
 
-  void _navigateToUserDetail(Map<String, dynamic> user) {
+  void _navigateToStudentDetail(Map<String, dynamic> student) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => UserDetailScreen(user: user),
+        builder: (context) => UserDetailScreen(user: student),
       ),
     );
   }
@@ -645,64 +564,67 @@ class _UserScreenState extends State<UserScreen> {
     ];
   }
 
-  void _handleUserAction(String action, Map<String, dynamic> user) {
+  void _handleStudentAction(String action, Map<String, dynamic> student) {
     switch (action) {
       case 'edit':
-        _showEditUserDialog(user);
+        _showEditStudentDialog(student);
         break;
       case 'delete':
-        _showDeleteUserDialog(user);
+        _showDeleteStudentDialog(student);
         break;
     }
   }
 
-  void _showEditUserDialog(Map<String, dynamic> user) {
-    final nameController = TextEditingController(text: user['name']);
-    final emailController = TextEditingController(text: user['email']);
-    final phoneController = TextEditingController(text: user['phone']);
-    final locationController = TextEditingController(text: user['location']);
+  void _showEditStudentDialog(Map<String, dynamic> student) {
+    final nameController = TextEditingController(text: student['name'] ?? '');
+    final emailController = TextEditingController(text: student['email'] ?? '');
+    final phoneController = TextEditingController(text: student['phoneNumber'] ?? '');
+    final addressController = TextEditingController(text: student['address'] ?? '');
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Edit ${user['name']}'),
+        title: Text('Edit ${student['name']}'),
         content: SizedBox(
           width: MediaQuery.of(context).size.width * 0.8,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                  border: OutlineInputBorder(),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Name',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: phoneController,
+                  decoration: const InputDecoration(
+                    labelText: 'Phone Number',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: phoneController,
-                decoration: const InputDecoration(
-                  labelText: 'Phone',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: emailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: locationController,
-                decoration: const InputDecoration(
-                  labelText: 'Location',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: addressController,
+                  decoration: const InputDecoration(
+                    labelText: 'Address',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         actions: [
@@ -711,17 +633,48 @@ class _UserScreenState extends State<UserScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              setState(() {
-                user['name'] = nameController.text;
-                user['email'] = emailController.text;
-                user['phone'] = phoneController.text;
-                user['location'] = locationController.text;
-              });
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${user['name']} updated successfully')),
-              );
+            onPressed: () async {
+              final updatedData = {
+                'name': nameController.text.trim(),
+                'phoneNumber': phoneController.text.trim(),
+                'email': emailController.text.trim(),
+                'address': addressController.text.trim(),
+              };
+
+              try {
+                final result = await ApiService.updateStudent(
+                  student['_id'] ?? student['id'].toString(),
+                  updatedData,
+                );
+
+                Navigator.pop(context);
+
+                if (result['success'] == true) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${student['name']} updated successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                  _loadStudents(); // Refresh the list
+                  _loadStats(); // Refresh the stats
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(result['message'] ?? 'Failed to update student'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              } catch (e) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error updating student: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF9C27B0),
@@ -735,35 +688,202 @@ class _UserScreenState extends State<UserScreen> {
   }
 
 
-  void _showDeleteUserDialog(Map<String, dynamic> user) {
+  void _showDeleteStudentDialog(Map<String, dynamic> student) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete User'),
-        content: Text('Are you sure you want to delete ${user['name']}? This action cannot be undone.'),
+        title: const Text('Delete Student'),
+        content: Text('Are you sure you want to delete ${student['name']}? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _users.removeWhere((u) => u['id'] == user['id']);
-              });
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('${user['name']} deleted successfully'),
-                  backgroundColor: Colors.red,
-                ),
-              );
+            onPressed: () async {
+              try {
+                final result = await ApiService.deleteStudent(
+                  student['_id'] ?? student['id'].toString(),
+                );
+
+                Navigator.pop(context);
+
+                if (result['success'] == true) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${student['name']} deleted successfully'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  _loadStudents(); // Refresh the list
+                  _loadStats(); // Refresh the stats
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(result['message'] ?? 'Failed to delete student'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              } catch (e) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error deleting student: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
             child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCreateStudentDialog() {
+    final nameController = TextEditingController();
+    final emailController = TextEditingController();
+    final phoneController = TextEditingController();
+    final addressController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create New Student'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: phoneController,
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: emailController,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: addressController,
+                decoration: const InputDecoration(
+                  labelText: 'Address',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              // Validate required fields
+              if (nameController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Name is required'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+              if (phoneController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Phone number is required'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+              if (emailController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Email is required'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+              if (addressController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Address is required'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+
+              try {
+                final result = await ApiService.createStudent(
+                  name: nameController.text.trim(),
+                  phoneNumber: phoneController.text.trim(),
+                  email: emailController.text.trim(),
+                  address: addressController.text.trim(),
+                );
+
+                Navigator.pop(context);
+
+                if (result['success'] == true) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${nameController.text.trim()} created successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                  _loadStudents(isRefresh: true); // Refresh the list
+                  _loadStats(); // Refresh the stats
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(result['message'] ?? 'Failed to create student'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              } catch (e) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error creating student: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF9C27B0),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Create'),
           ),
         ],
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/instructor.dart';
+import '../../services/api_service.dart';
 import 'instructor_detail_screen.dart';
 
 class InstructorManagementScreen extends StatefulWidget {
@@ -10,29 +11,164 @@ class InstructorManagementScreen extends StatefulWidget {
 }
 
 class _InstructorManagementScreenState extends State<InstructorManagementScreen> {
-  List<Instructor> instructors = Instructor.getSampleInstructors();
-  List<Instructor> filteredInstructors = [];
-  String searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  List<Instructor> instructors = [];
+  bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMoreData = true;
+  int _currentPage = 1;
+  final int _limit = 10;
+  String _searchQuery = '';
   String selectedFilter = 'All';
+  Map<String, dynamic> _stats = {
+    'total': 0,
+    'isActive': 0,
+    'isInactive': 0,
+  };
 
   @override
   void initState() {
     super.initState();
-    filteredInstructors = instructors;
+    _loadInstructors();
+    _loadStats();
+    _scrollController.addListener(_scrollListener);
   }
 
-  void _filterInstructors() {
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 100) {
+      if (_hasMoreData && !_isLoadingMore) {
+        print('Triggering infinite scroll - loading more instructors...');
+        _loadMoreInstructors();
+      }
+    }
+  }
+
+  Future<void> _loadInstructors({bool isRefresh = false}) async {
+    if (isRefresh) {
+      setState(() {
+        _currentPage = 1;
+        _hasMoreData = true;
+        instructors.clear();
+      });
+    }
+
     setState(() {
-      filteredInstructors = instructors.where((instructor) {
-        bool matchesSearch = instructor.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
-            instructor.specialization.toLowerCase().contains(searchQuery.toLowerCase());
-        bool matchesFilter = selectedFilter == 'All' || 
-            (selectedFilter == 'Active' && instructor.isActive) ||
-            (selectedFilter == 'Inactive' && !instructor.isActive);
-        
-        return matchesSearch && matchesFilter;
-      }).toList();
+      _isLoading = true;
     });
+
+    try {
+      final result = await ApiService.getAllInstructors(
+        page: _currentPage,
+        limit: _limit,
+        search: _searchQuery.isNotEmpty ? _searchQuery : null,
+        status: selectedFilter != 'All' ? selectedFilter.toLowerCase() : null,
+      );
+
+      if (result['success'] == true) {
+        final newInstructors = (result['data']['instructors'] as List)
+            .map((json) => Instructor.fromJson(json))
+            .toList();
+        
+        setState(() {
+          if (isRefresh || _currentPage == 1) {
+            instructors = newInstructors;
+          } else {
+            instructors.addAll(newInstructors);
+          }
+          _hasMoreData = newInstructors.length == _limit;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+        _showErrorSnackBar(result['message'] ?? 'Failed to load instructors');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      _showErrorSnackBar('Error loading instructors: $e');
+    }
+  }
+
+  Future<void> _loadMoreInstructors() async {
+    if (_isLoadingMore || !_hasMoreData) {
+      print('Skipping load more - isLoadingMore: $_isLoadingMore, hasMoreData: $_hasMoreData');
+      return;
+    }
+    
+    print('Loading more instructors - page: ${_currentPage + 1}');
+    setState(() {
+      _isLoadingMore = true;
+      _currentPage++;
+    });
+
+    try {
+      final result = await ApiService.getAllInstructors(
+        page: _currentPage,
+        limit: _limit,
+        search: _searchQuery.isNotEmpty ? _searchQuery : null,
+        status: selectedFilter != 'All' ? selectedFilter.toLowerCase() : null,
+      );
+
+      if (result['success'] == true) {
+        final newInstructors = (result['data']['instructors'] as List)
+            .map((json) => Instructor.fromJson(json))
+            .toList();
+        
+        print('Loaded ${newInstructors.length} more instructors. Total: ${instructors.length + newInstructors.length}, hasMoreData: ${newInstructors.length == _limit}');
+        
+        setState(() {
+          instructors.addAll(newInstructors);
+          _hasMoreData = newInstructors.length == _limit;
+          _isLoadingMore = false;
+        });
+      } else {
+        setState(() {
+          _currentPage--; // Revert page increment on failure
+          _isLoadingMore = false;
+        });
+        _showErrorSnackBar(result['message'] ?? 'Failed to load more instructors');
+      }
+    } catch (e) {
+      setState(() {
+        _currentPage--; // Revert page increment on failure
+        _isLoadingMore = false;
+      });
+      _showErrorSnackBar('Error loading more instructors: $e');
+    }
+  }
+
+
+  Future<void> _loadStats() async {
+    try {
+      final result = await ApiService.getInstructorStats();
+      if (result['success'] == true) {
+        setState(() {
+          _stats = result['data'];
+        });
+      }
+    } catch (e) {
+      print('Error loading instructor stats: $e');
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   double _getResponsiveWidth(BuildContext context) {
@@ -78,16 +214,18 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
           _buildStatsHeader(),
           
           // Search and filters
-          Container(
+          SizedBox(
             width: _getResponsiveWidth(context),
             child: _buildSearchAndFilters(),
           ),
           
-          // Instructor list
+          // Main Content
           Expanded(
-            child: filteredInstructors.isEmpty
-                ? _buildEmptyState()
-                : _buildInstructorList(),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : instructors.isEmpty
+                    ? _buildEmptyState()
+                    : _buildInstructorList(),
           ),
         ],
       ),
@@ -102,10 +240,6 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
   }
 
   Widget _buildStatsHeader() {
-    int totalInstructors = instructors.length;
-    int activeInstructors = instructors.where((i) => i.isActive).length;
-    int totalStudents = instructors.fold(0, (sum, instructor) => sum + instructor.totalStudents);
-    
     return Container(
       width: _getResponsiveWidth(context),
       margin: const EdgeInsets.all(16),
@@ -128,9 +262,9 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStatItem(Icons.school, totalInstructors.toString(), 'Total Instructors'),
-          _buildStatItem(Icons.verified, activeInstructors.toString(), 'Active'),
-          _buildStatItem(Icons.people, totalStudents.toString(), 'Students'),
+          _buildStatItem(Icons.school, _stats['total']?.toString() ?? '0', 'Total Instructors'),
+          _buildStatItem(Icons.verified, _stats['isActive']?.toString() ?? '0', 'Active'),
+          _buildStatItem(Icons.cancel, _stats['isInactive']?.toString() ?? '0', 'Inactive'),
         ],
       ),
     );
@@ -180,8 +314,8 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
             ),
             child: TextField(
               onChanged: (value) {
-                searchQuery = value;
-                _filterInstructors();
+                _searchQuery = value;
+                _loadInstructors(isRefresh: true);
               },
               decoration: InputDecoration(
                 hintText: 'Search instructors...',
@@ -220,7 +354,7 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
       onTap: () {
         setState(() {
           selectedFilter = filter;
-          _filterInstructors();
+          _loadInstructors(isRefresh: true);
         });
       },
       child: Container(
@@ -246,15 +380,28 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
 
   Widget _buildInstructorList() {
     return Center(
-      child: Container(
+      child: SizedBox(
         width: _getResponsiveWidth(context),
         child: ListView.builder(
+          controller: _scrollController,
           padding: const EdgeInsets.all(16),
-          itemCount: filteredInstructors.length,
+          itemCount: instructors.length + (_isLoadingMore ? 1 : 0),
           itemBuilder: (context, index) {
+            if (index == instructors.length) {
+              // Loading indicator at the end for infinite scroll
+              return const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF9C27B0)),
+                  ),
+                ),
+              );
+            }
+            
             return Padding(
               padding: const EdgeInsets.only(bottom: 16),
-              child: _buildInstructorCard(filteredInstructors[index]),
+              child: _buildInstructorCard(instructors[index]),
             );
           },
         ),
@@ -296,16 +443,26 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
                   color: const Color(0xFF9C27B0),
                   borderRadius: BorderRadius.circular(30),
                 ),
-                child: Center(
-                  child: Text(
-                    instructor.initials,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                    ),
-                  ),
-                ),
+                child: instructor.avatar != null && instructor.avatar!.isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(30),
+                        child: Image.network(
+                          instructor.avatar!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              Icons.person,
+                              color: Colors.white,
+                              size: 30,
+                            );
+                          },
+                        ),
+                      )
+                    : Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 30,
+                      ),
               ),
               const SizedBox(width: 16),
               
@@ -347,7 +504,7 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      instructor.specialization,
+                      instructor.email,
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[600],
@@ -357,21 +514,11 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(Icons.star, size: 16, color: Colors.amber),
-                        const SizedBox(width: 4),
-                        Text(
-                          instructor.rating.toString(),
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Icon(Icons.people, size: 16, color: Colors.grey[600]),
+                        Icon(Icons.phone, size: 16, color: Colors.grey[600]),
                         const SizedBox(width: 4),
                         Flexible(
                           child: Text(
-                            '${instructor.totalStudents} students',
+                            instructor.phoneNumber.isNotEmpty ? instructor.phoneNumber : 'No phone',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey[600],
@@ -382,29 +529,17 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(Icons.play_circle, size: 16, color: Colors.grey[600]),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            '${instructor.totalCourses} courses',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Icon(Icons.video_library, size: 16, color: Colors.grey[600]),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            '${instructor.uploadedVideos} videos',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
+                    if (instructor.skills.isNotEmpty)
+                      Row(
+                        children: [
+                          Icon(Icons.star, size: 16, color: Colors.amber),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              instructor.skills.take(2).join(', '),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -575,7 +710,7 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: selectedSpecialization,
+                    initialValue: selectedSpecialization,
                     decoration: const InputDecoration(
                       labelText: 'Specialization',
                       border: OutlineInputBorder(),
@@ -667,45 +802,42 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
     );
   }
 
-  void _addInstructor(String name, String email, String phone, String specialization, String bio, List<String> skills) {
-    final newInstructor = Instructor(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: name,
-      email: email,
-      phone: phone,
-      specialization: specialization,
-      bio: bio.isEmpty ? 'No bio provided' : bio,
-      profileImage: '',
-      rating: 0.0,
-      totalStudents: 0,
-      totalCourses: 0,
-      liveSessions: 0,
-      uploadedVideos: 0,
-      quizzesCreated: 0,
-      skills: skills,
-      joinDate: DateTime.now(),
-      isActive: true,
-    );
+  Future<void> _addInstructor(String name, String email, String phone, String specialization, String bio, List<String> skills) async {
+    try {
+      // Only send fields that the API accepts
+      final instructorData = {
+        'name': name,
+        'email': email,
+        'phoneNumber': phone,
+        'specializations': specialization,
+        'skills': skills,
+      };
 
-    setState(() {
-      instructors.add(newInstructor);
-      _filterInstructors();
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$name added successfully as instructor'),
-        backgroundColor: Colors.green,
-      ),
-    );
+      final result = await ApiService.addInstructor(instructorData);
+      
+      if (result['success'] == true) {
+        await _loadInstructors(isRefresh: true);
+        await _loadStats();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$name added successfully as instructor'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        _showErrorSnackBar(result['message'] ?? 'Failed to add instructor');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Error adding instructor: $e');
+    }
   }
 
   void _showEditInstructorDialog(Instructor instructor) {
     final nameController = TextEditingController(text: instructor.name);
     final emailController = TextEditingController(text: instructor.email);
-    final phoneController = TextEditingController(text: instructor.phone);
+    final phoneController = TextEditingController(text: instructor.phoneNumber);
     final bioController = TextEditingController(text: instructor.bio);
-    String selectedSpecialization = instructor.specialization;
+    String selectedSpecialization = 'Mobile Development'; // Default since no specialization field
     List<String> selectedSkills = List.from(instructor.skills);
     bool isActive = instructor.isActive;
     
@@ -717,11 +849,6 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
       'Data Science',
       'DevOps',
     ];
-    
-    // Ensure the instructor's current specialization is in the list
-    if (!specializations.contains(instructor.specialization)) {
-      specializations.add(instructor.specialization);
-    }
     
     final availableSkills = [
       'Flutter', 'Dart', 'React', 'JavaScript', 'Python', 'Java',
@@ -771,7 +898,7 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: selectedSpecialization,
+                    initialValue: selectedSpecialization,
                     decoration: const InputDecoration(
                       labelText: 'Specialization',
                       border: OutlineInputBorder(),
@@ -837,7 +964,7 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
                             isActive = value;
                           });
                         },
-                        activeColor: const Color(0xFF9C27B0),
+                        activeThumbColor: const Color(0xFF9C27B0),
                       ),
                       Text(isActive ? 'Active' : 'Inactive'),
                     ],
@@ -853,20 +980,31 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
             ),
             ElevatedButton(
               onPressed: () {
-                if (nameController.text.isNotEmpty && 
-                    emailController.text.isNotEmpty &&
-                    phoneController.text.isNotEmpty) {
+                // Allow partial updates - only validate that at least one field has content
+                if (nameController.text.trim().isNotEmpty || 
+                    emailController.text.trim().isNotEmpty ||
+                    phoneController.text.trim().isNotEmpty ||
+                    // bioController.text.trim().isNotEmpty ||
+                    selectedSkills.isNotEmpty) {
                   _updateInstructor(
                     instructor,
-                    nameController.text,
-                    emailController.text,
-                    phoneController.text,
+                    nameController.text.trim().isEmpty ? instructor.name : nameController.text.trim(),
+                    emailController.text.trim().isEmpty ? instructor.email : emailController.text.trim(),
+                    phoneController.text.trim().isEmpty ? instructor.phoneNumber : phoneController.text.trim(),
                     selectedSpecialization,
-                    bioController.text,
-                    selectedSkills,
+                    bioController.text.trim().isEmpty ? instructor.bio : bioController.text.trim(),
+                    selectedSkills.isEmpty ? instructor.skills : selectedSkills,
                     isActive,
                   );
                   Navigator.pop(context);
+                } else {
+                  // Show error if all fields are empty
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please fill at least one field to update'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -881,40 +1019,55 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
     );
   }
 
-  void _updateInstructor(Instructor instructor, String name, String email, String phone, String specialization, String bio, List<String> skills, bool isActive) {
-    final updatedInstructor = Instructor(
-      id: instructor.id,
-      name: name,
-      email: email,
-      phone: phone,
-      specialization: specialization,
-      bio: bio.isEmpty ? 'No bio provided' : bio,
-      profileImage: instructor.profileImage,
-      rating: instructor.rating,
-      totalStudents: instructor.totalStudents,
-      totalCourses: instructor.totalCourses,
-      liveSessions: instructor.liveSessions,
-      uploadedVideos: instructor.uploadedVideos,
-      quizzesCreated: instructor.quizzesCreated,
-      skills: skills,
-      joinDate: instructor.joinDate,
-      isActive: isActive,
-    );
+  Future<void> _updateInstructor(Instructor instructor, String name, String email, String phone, String specialization, String bio, List<String> skills, bool isActive) async {
+    try {
+      // Only send fields that the API accepts
+      final updateData = {
+        'name': name,
+        'email': email,
+        'phoneNumber': phone,
+        'specializations': specialization,
+        'skills': skills,
+      };
 
-    setState(() {
-      int index = instructors.indexWhere((i) => i.id == instructor.id);
-      if (index != -1) {
-        instructors[index] = updatedInstructor;
+      final result = await ApiService.updateInstructor(instructor.id, updateData);
+      
+      if (result['success'] == true) {
+        await _loadInstructors(isRefresh: true);
+        await _loadStats();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$name updated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        _showErrorSnackBar(result['message'] ?? 'Failed to update instructor');
       }
-      _filterInstructors();
-    });
+    } catch (e) {
+      _showErrorSnackBar('Error updating instructor: $e');
+    }
+  }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$name updated successfully'),
-        backgroundColor: Colors.blue,
-      ),
-    );
+  Future<void> _deleteInstructor(Instructor instructor) async {
+    try {
+      final result = await ApiService.deleteInstructor(instructor.id);
+      
+      if (result['success'] == true) {
+        await _loadInstructors(isRefresh: true);
+        await _loadStats();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${instructor.name} deleted successfully'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } else {
+        _showErrorSnackBar(result['message'] ?? 'Failed to delete instructor');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Error deleting instructor: $e');
+    }
   }
 
   void _showDeleteInstructorDialog(Instructor instructor) {
@@ -929,18 +1082,9 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
-              setState(() {
-                instructors.removeWhere((i) => i.id == instructor.id);
-                _filterInstructors();
-              });
+            onPressed: () async {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('${instructor.name} deleted successfully'),
-                  backgroundColor: Colors.red,
-                ),
-              );
+              await _deleteInstructor(instructor);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 
 class CustomDrawer extends StatelessWidget {
   final int selectedIndex;
@@ -89,14 +90,14 @@ class CustomDrawer extends StatelessWidget {
                   onTap: () => onItemTapped(0),
                 ),
                 _buildDrawerItem(
-                  icon: Icons.people,
-                  title: 'User Management',
+                  icon: Icons.school,
+                  title: 'Student Management',
                   index: 1,
                   isSelected: selectedIndex == 1,
                   onTap: () => onItemTapped(1),
                 ),
                 _buildDrawerItem(
-                  icon: Icons.school,
+                  icon: Icons.person,
                   title: 'Instructors Management',
                   index: 2,
                   isSelected: selectedIndex == 2,
@@ -150,9 +151,14 @@ class CustomDrawer extends StatelessWidget {
                 top: BorderSide(color: Colors.grey[200]!),
               ),
             ),
-            child: Column(
-              children: [
-                ListTile(
+            child: FutureBuilder<Map<String, dynamic>?>(
+              future: ApiService.getUserData(),
+              builder: (context, snapshot) {
+                final userData = snapshot.data;
+                final displayName = userData?['name'] ?? 'Admin User';
+                final displayEmail = userData?['email'] ?? 'admin@example.com';
+
+                return ListTile(
                   leading: const CircleAvatar(
                     radius: 20,
                     backgroundColor: Color(0xFF2196F3),
@@ -165,24 +171,24 @@ class CustomDrawer extends StatelessWidget {
                       ),
                     ),
                   ),
-                  title: const Text(
-                    'Admin User',
-                    style: TextStyle(
+                  title: Text(
+                    displayName,
+                    style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                     ),
                   ),
-                  subtitle: const Text(
-                    'admin@example.com',
-                    style: TextStyle(fontSize: 12),
+                  subtitle: Text(
+                    displayEmail,
+                    style: const TextStyle(fontSize: 12),
                   ),
                   trailing: IconButton(
                     icon: const Icon(Icons.logout, size: 20),
                     onPressed: () => _showLogoutDialog(context),
                   ),
                   contentPadding: EdgeInsets.zero,
-                ),
-              ],
+                );
+              },
             ),
           ),
         ],
@@ -229,31 +235,79 @@ class CustomDrawer extends StatelessWidget {
   }
 
   void _showLogoutDialog(BuildContext context) {
+    bool isLoading = false;
+    
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // Handle logout logic here
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Logged out successfully')),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Logout'),
+          content: const Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: isLoading ? null : () => Navigator.pop(context),
+              child: const Text('Cancel'),
             ),
-            child: const Text('Logout'),
-          ),
-        ],
+            ElevatedButton(
+              onPressed: isLoading ? null : () async {
+                setState(() {
+                  isLoading = true;
+                });
+
+                try {
+                  final result = await ApiService.adminLogout();
+                  
+                  Navigator.pop(context);
+                  
+                  if (result['success'] == true) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Logged out successfully'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(result['message'] ?? 'Logout completed'),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                  }
+                  
+                  // Navigate to login screen
+                  Navigator.pushNamedAndRemoveUntil(
+                    context, 
+                    '/login', 
+                    (route) => false,
+                  );
+                } catch (e) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error during logout: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: isLoading 
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Text('Logout'),
+            ),
+          ],
+        ),
       ),
     );
   }
