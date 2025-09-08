@@ -187,7 +187,7 @@ class _UserScreenState extends State<UserScreen> {
                 Text(
                   'Student Management',
                   style: TextStyle(
-                    fontSize: 28,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),

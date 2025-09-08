@@ -262,7 +262,7 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
               Text(
                 'Event Management',
                 style: TextStyle(
-                  fontSize: 24,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Colors.black87,
                 ),
