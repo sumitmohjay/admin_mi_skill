@@ -174,49 +174,34 @@ class _UserScreenState extends State<UserScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Section
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Student Management',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Manage and monitor student accounts',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
+    return Scaffold(
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Section
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Student Management',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                 ),
-              ),
-              ElevatedButton.icon(
-                onPressed: _showCreateStudentDialog,
-                icon: const Icon(Icons.add),
-                label: const Text('Create Student'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF9C27B0),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                SizedBox(height: 4),
+                Text(
+                  'Manage and monitor student accounts',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
           const SizedBox(height: 24),
 
           // Search Section
@@ -340,7 +325,20 @@ class _UserScreenState extends State<UserScreen> {
                       ),
           ),
         ],
+        ),
       ),
+      floatingActionButton: Container(
+        margin: const EdgeInsets.only(bottom: 16, right: 16),
+        child: FloatingActionButton.extended(
+          onPressed: _showCreateStudentDialog,
+          backgroundColor: const Color(0xFF9C27B0),
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.group_add),
+          label: const Text('Create Student'),
+          elevation: 8,
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 

@@ -142,32 +142,14 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                     ],
                   ),
                 ),
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: _fetchCourses,
-                      icon: const Icon(Icons.refresh),
-                      tooltip: 'Refresh',
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.grey[200],
-                        foregroundColor: Colors.grey[700],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: () => _navigateToAddCourse(),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add Course'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF9C27B0),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ],
+                IconButton(
+                  onPressed: _fetchCourses,
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'Refresh',
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.grey[200],
+                    foregroundColor: Colors.grey[700],
+                  ),
                 ),
               ],
             ),
@@ -279,49 +261,48 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
             const SizedBox(height: 24),
 
             // Courses List
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  // Header
-                  Container(
-                    padding: const EdgeInsets.all(16),
+            filteredCourses.isEmpty
+                ? Container(
+                    padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        topRight: Radius.circular(12),
-                      ),
-                    ),
-                    child: const Row(
-                      children: [
-                        Expanded(flex: 3, child: Text('Course', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
-                        Expanded(flex: 2, child: Text('Instructor', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
-                        Expanded(flex: 2, child: Text('Category', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
-                        Expanded(flex: 1, child: Text('Price', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
-                        Expanded(flex: 1, child: Text('Rating', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
-                        SizedBox(width: 50, child: Text('Actions', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
                       ],
                     ),
+                    child: const Center(
+                      child: Text(
+                        'No courses found',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                  )
+                : Column(
+                    children: filteredCourses.map((course) => _buildCourseCard(course)).toList(),
                   ),
-                  // Course List
-                  ...filteredCourses.map((course) => _buildCourseRow(course)),
-                ],
-              ),
-            ),
           ],
         ),
       ),
+      floatingActionButton: Container(
+        margin: const EdgeInsets.only(bottom: 16, right: 16),
+        child: FloatingActionButton.extended(
+          onPressed: () => _navigateToAddCourse(),
+          backgroundColor: const Color(0xFF9C27B0),
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.add),
+          label: const Text('Add Course'),
+          elevation: 8,
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
@@ -442,139 +423,205 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
     );
   }
 
-  Widget _buildCourseRow(Course course) {
+  Widget _buildCourseCard(Course course) {
     return Container(
+      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Colors.grey.shade200),
-        ),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Course info
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  course.title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
+          // Top row: Title on left, Price & Rating on right
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Course title (left side)
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      course.title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: course.published 
+                            ? Colors.green.withOpacity(0.1)
+                            : Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        course.published ? 'Published' : 'Draft',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: course.published ? Colors.green : Colors.red,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: course.published 
-                        ? Colors.green.withOpacity(0.1)
-                        : Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    course.published ? 'Published' : 'Draft',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: course.published ? Colors.green : Colors.red,
+              ),
+              const SizedBox(width: 12),
+              // Price and Rating (right side)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // Price
+                  Text(
+                    '₹${course.price.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF9C27B0),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          // Instructor
-          Expanded(
-            flex: 2,
-            child: Text(
-              course.instructor.name,
-              style: const TextStyle(fontSize: 13),
-            ),
-          ),
-          // Category
-          Expanded(
-            flex: 2,
-            child: Text(
-              course.category.name,
-              style: const TextStyle(fontSize: 13),
-            ),
-          ),
-          // Price
-          Expanded(
-            flex: 1,
-            child: Text(
-              '\$${course.price.toStringAsFixed(0)}',
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-            ),
-          ),
-          // Rating
-          Expanded(
-            flex: 1,
-            child: Row(
-              children: [
-                const Icon(Icons.star, color: Colors.amber, size: 14),
-                const SizedBox(width: 2),
-                Text(
-                  course.averageRating.toStringAsFixed(1),
-                  style: const TextStyle(fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-          // Actions
-          SizedBox(
-            width: 50,
-            child: PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, size: 16),
-              onSelected: (value) {
-                switch (value) {
-                  case 'view':
-                    _navigateToCourseDetails(course);
-                    break;
-                  case 'edit':
-                    _navigateToEditCourse(course);
-                    break;
-                  case 'delete':
-                    _showDeleteDialog(course);
-                    break;
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'view',
-                  child: Row(
+                  const SizedBox(height: 4),
+                  // Rating
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.visibility, size: 16),
-                      SizedBox(width: 8),
-                      Text('View'),
+                      const Icon(Icons.star, color: Colors.amber, size: 16),
+                      const SizedBox(width: 2),
+                      Text(
+                        course.averageRating.toStringAsFixed(1),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
                     ],
                   ),
-                ),
-                const PopupMenuItem(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit, size: 16),
-                      SizedBox(width: 8),
-                      Text('Edit'),
-                    ],
+                ],
+              ),
+              // Actions menu
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, size: 20, color: Colors.grey),
+                onSelected: (value) {
+                  switch (value) {
+                    case 'view':
+                      _navigateToCourseDetails(course);
+                      break;
+                    case 'edit':
+                      _navigateToEditCourse(course);
+                      break;
+                    case 'delete':
+                      _showDeleteDialog(course);
+                      break;
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'view',
+                    child: Row(
+                      children: [
+                        Icon(Icons.visibility, size: 16),
+                        SizedBox(width: 8),
+                        Text('View'),
+                      ],
+                    ),
                   ),
-                ),
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete, size: 16, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text('Delete', style: TextStyle(color: Colors.red)),
-                    ],
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit, size: 16),
+                        SizedBox(width: 8),
+                        Text('Edit'),
+                      ],
+                    ),
                   ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, size: 16, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Delete', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Bottom row: Instructor and Category
+          Row(
+            children: [
+              // Instructor
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Instructor',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      course.instructor.name,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 16),
+              // Category
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Category',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      course.category.name,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

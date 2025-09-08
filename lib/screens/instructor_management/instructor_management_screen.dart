@@ -189,18 +189,21 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
   double _getDialogWidth(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
     
-    if (screenWidth < 600) {
-      // Small screens (mobile) - use most of the screen
-      return screenWidth * 0.95;
+    if (screenWidth < 350) {
+      // Ultra-small screens - use maximum available width with minimal padding
+      return screenWidth - 16; // Only 8px padding on each side
+    } else if (screenWidth < 600) {
+      // Small screens (mobile) - use almost full screen width
+      return screenWidth * 0.98;
     } else if (screenWidth < 900) {
-      // Medium screens (tablet) - use 80% of screen
-      return screenWidth * 0.8;
+      // Medium screens (tablet) - use 85% of screen
+      return screenWidth * 0.85;
     } else if (screenWidth < 1200) {
-      // Large tablets/small desktop - use 70% of screen
-      return screenWidth * 0.7;
+      // Large tablets/small desktop - use 75% of screen
+      return screenWidth * 0.75;
     } else {
-      // Large screens (desktop) - use 60% of screen
-      return screenWidth * 0.6;                                   
+      // Large screens (desktop) - use 65% of screen
+      return screenWidth * 0.65;                                   
     }
   }
 
@@ -718,7 +721,13 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
                     ),
                     items: specializations.map((spec) => DropdownMenuItem(
                       value: spec,
-                      child: Text(spec),
+                      child: Text(
+                        spec,
+                        style: TextStyle(
+                          fontSize: MediaQuery.of(context).size.width < 600 ? 12 : 14,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     )).toList(),
                     onChanged: (value) => setDialogState(() => selectedSpecialization = value!),
                   ),
@@ -906,7 +915,13 @@ class _InstructorManagementScreenState extends State<InstructorManagementScreen>
                     ),
                     items: specializations.map((spec) => DropdownMenuItem(
                       value: spec,
-                      child: Text(spec),
+                      child: Text(
+                        spec,
+                        style: TextStyle(
+                          fontSize: MediaQuery.of(context).size.width < 600 ? 12 : 14,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     )).toList(),
                     onChanged: (value) => setDialogState(() => selectedSpecialization = value!),
                   ),

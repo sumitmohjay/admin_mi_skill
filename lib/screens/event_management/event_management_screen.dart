@@ -249,48 +249,30 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return Scaffold(
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           // Header Section
-          Row(
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Event Management',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Create, manage and monitor events',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
+              Text(
+                'Event Management',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
               ),
-              ElevatedButton.icon(
-                onPressed: () => _navigateToAddEvent(),
-                icon: const Icon(Icons.add),
-                label: const Text('Create Event'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF9C27B0),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+              SizedBox(height: 4),
+              Text(
+                'Create, manage and monitor events',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
                 ),
               ),
             ],
@@ -472,7 +454,20 @@ class _EventManagementScreenState extends State<EventManagementScreen> {
             ),
           ),
         ],
+        ),
       ),
+      floatingActionButton: Container(
+        margin: const EdgeInsets.only(bottom: 16, right: 16),
+        child: FloatingActionButton.extended(
+          onPressed: () => _navigateToAddEvent(),
+          backgroundColor: const Color(0xFF9C27B0),
+          foregroundColor: Colors.white,
+          icon: const Icon(Icons.add),
+          label: const Text('Create Event'),
+          elevation: 8,
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 

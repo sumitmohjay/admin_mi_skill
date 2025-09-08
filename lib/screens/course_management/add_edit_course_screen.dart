@@ -321,28 +321,12 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Thumbnail
-        Row(
-          children: [
-            const Text(
-              'Course Thumbnail',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const Spacer(),
-            ElevatedButton.icon(
-              onPressed: _isUploading ? null : _pickThumbnail,
-              icon: const Icon(Icons.add_photo_alternate, size: 18),
-              label: const Text('Add Thumbnail'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF9C27B0),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
-            ),
-          ],
+        const Text(
+          'Course Thumbnail',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
         ),
         const SizedBox(height: 8),
         if (_selectedThumbnail != null || _selectedThumbnailBytes != null) ...[
@@ -405,7 +389,7 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
         ] else
           Container(
             padding: const EdgeInsets.all(16),
@@ -421,7 +405,27 @@ class _AddEditCourseScreenState extends State<AddEditCourseScreen> {
             ),
           ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
+        
+        // Add Thumbnail Button (moved below thumbnail area)
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _isUploading ? null : _pickThumbnail,
+            icon: const Icon(Icons.add_photo_alternate, size: 18),
+            label: const Text('Add Thumbnail'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF9C27B0),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 24),
 
         // Intro Video
         Row(
